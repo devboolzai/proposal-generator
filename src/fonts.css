@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Jura:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   Fb Gandalf — Self-hosted (Hebrew)
+   ============================================ */
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================
+   Global font stack
+   ============================================ */
+
+:root {
+  --font-hebrew: 'Fb Gandalf', 'Segoe UI', Tahoma, sans-serif;
+  --font-english: 'Jura', 'Segoe UI', sans-serif;
+  --font-stack: 'Fb Gandalf', 'Jura', 'Segoe UI', Tahoma, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-stack);
+}
