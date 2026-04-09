@@ -12,8 +12,18 @@ import {
   WidthType,
   ShadingType,
   PageBreak,
+  ImageRun,
 } from "docx";
 import { saveAs } from "file-saver";
+
+let _coverImageBuffer = null;
+async function getCoverImage() {
+  if (_coverImageBuffer) return _coverImageBuffer;
+  const resp = await fetch("/cover-image.jpg");
+  const blob = await resp.blob();
+  _coverImageBuffer = await blob.arrayBuffer();
+  return _coverImageBuffer;
+}
 
 const FONT = "Jura";           // Latin/English font
 const FONT_CS = "Fb Gandalf";  // Hebrew (Complex Script) font
@@ -86,6 +96,7 @@ function bulletItem(text, ref = "bullets") {
 }
 
 export async function generateDocx(proposalData, sections, activeNotes) {
+  const coverImageData = await getCoverImage();
   const docChildren = [];
 
   // ── Header ──
@@ -555,6 +566,30 @@ export async function generateDocx(proposalData, sections, activeNotes) {
       ],
     },
     sections: [
+      {
+        properties: {
+          page: {
+            size: { width: 11906, height: 16838 },
+            margin: { top: 0, right: 0, bottom: 0, left: 0 },
+          },
+        },
+        children: [
+          new Paragraph({
+            spacing: { before: 0, after: 0, line: 240 },
+            children: [
+              new ImageRun({
+                data: coverImageData,
+                transformation: { width: 595, height: 842 },
+                floating: {
+                  horizontalPosition: { offset: 0 },
+                  verticalPosition: { offset: 0 },
+                  behindDocument: true,
+                },
+              }),
+            ],
+          }),
+        ],
+      },
       {
         properties: {
           page: {
