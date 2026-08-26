@@ -106,7 +106,7 @@ export async function generateDocx(proposalData, sections, activeNotes) {
         rtlRun(`תאריך: ${proposalData.date}`, {
           size: 22,
           color: COLOR_PRIMARY,
-          bold: true,
+          
         }),
       ],
       { spacing: { after: 80 } }
@@ -118,7 +118,7 @@ export async function generateDocx(proposalData, sections, activeNotes) {
     : proposalData.clientName;
 
   docChildren.push(
-    rtlParagraph([rtlRun(`לכבוד: ${clientLine}`, { size: 26, bold: true })], {
+    rtlParagraph([rtlRun(`לכבוד: ${clientLine}`, { size: 26, })], {
       spacing: { after: 60 },
     })
   );
@@ -150,7 +150,7 @@ export async function generateDocx(proposalData, sections, activeNotes) {
         [
           rtlRun(`הנידון: ${proposalData.subject}`, {
             size: 32,
-            bold: true,
+            
             color: "312E81",
           }),
         ],
