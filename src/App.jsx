@@ -1,5 +1,10 @@
+import { ProposalProvider } from './state/useProposal'
 import ProposalGenerator from './ProposalGenerator'
 
 export default function App() {
-  return <ProposalGenerator />
+  return (
+    <ProposalProvider>
+      <ProposalGenerator />
+    </ProposalProvider>
+  )
 }

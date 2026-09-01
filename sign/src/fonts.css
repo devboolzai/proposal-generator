@@ -1,0 +1,49 @@
+/* ============================================
+   Fb Gandalf — Self-hosted (Hebrew)
+
+   A deliberate copy of the generator's src/fonts.css. The two
+   apps are separate deployments precisely so a client never
+   loads the generator, which means the signing page has to
+   carry its own font files.
+   ============================================ */
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Fb Gandalf';
+  src: url('/fonts/FbGandalf-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-stack: 'Fb Gandalf', 'Segoe UI', Tahoma, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-stack);
+  background: #FDF8F1;
+  color: #1A1A1A;
+  -webkit-text-size-adjust: 100%;
+}
