@@ -3,6 +3,7 @@ import { useProposal } from "../state/useProposal";
 import { styles, BRAND, GLYPH } from "../styles/appStyles";
 import { generateDocx } from "../exportDocx";
 import { generatePdf } from "../exportPdf";
+import ShareLinkModal from "./ShareLinkModal";
 
 // Native list markers (list-style-type: disc) are positioned by html2canvas
 // itself during PDF capture, and it ignores the RTL direction — the dots end
@@ -34,6 +35,7 @@ export default function Preview() {
   const { proposalData, setPreviewMode, generatePreviewContent } = useProposal();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState(null);
+  const [sharing, setSharing] = useState(false);
 
   const sections = generatePreviewContent();
   const activeNotes = proposalData.notes
@@ -61,8 +63,16 @@ export default function Preview() {
           display: "flex",
           gap: "12px",
           justifyContent: "center",
+          flexWrap: "wrap",
         }}
       >
+        <button
+          style={styles.btn("lg")}
+          onClick={() => setSharing(true)}
+          disabled={pdfBusy}
+        >
+          🔗 שליחה לחתימה
+        </button>
         <button
           style={styles.btn("lg")}
           onClick={handleDownloadPdf}
@@ -99,6 +109,12 @@ export default function Preview() {
         >
           {pdfError}
         </div>
+      )}
+
+      {/* An overlay, never a replacement: generatePdf rasterises the live
+          #proposal-preview node below, so it has to stay mounted. */}
+      {sharing && (
+        <ShareLinkModal proposalData={proposalData} onClose={() => setSharing(false)} />
       )}
 
       <div style={styles.preview} id="proposal-preview">
