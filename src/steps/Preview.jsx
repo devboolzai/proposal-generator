@@ -66,6 +66,16 @@ export default function Preview() {
   const [pdfError, setPdfError] = useState(null);
   const [sharing, setSharing] = useState(false);
   const [code, setCode] = useState(getAccessCode);
+  const generalManagement = section.managementSections.find(
+    (ms) =>
+      ms.platform === "Facebook" ||
+      ms.platform === "Instagram" ||
+      ms.platform === "LinkedIn"
+  );
+
+  const tiktokManagement = section.managementSections.find(
+    (ms) => ms.platform === "TikTok"
+  );
 
   // This is where the proposal earns its number: the first screen that can
   // turn it into a document. ensureProposalId is idempotent, so coming back
@@ -265,16 +275,25 @@ export default function Preview() {
                   הקמת עמודים או תחילת פעילות:
                 </div>
                 <BulletList items={section.setupItems} gap={16} />
-                {section.managementSections.map((ms, mIdx) => (
-                  <div key={mIdx}>
-                    <div
-                      style={{ ...styles.previewLead, marginTop: "12px" }}
-                    >
-                      ניהול עמוד {ms.platform} עסקי:
+                {generalManagement && (
+                  <div>
+                    <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+                      ניהול עמוד עסקי כולל:
                     </div>
-                    <BulletList items={ms.items} gap={8} />
+
+                    <BulletList items={generalManagement.items} gap={8} />
                   </div>
-                ))}
+                )}
+
+                {tiktokManagement && (
+                  <div>
+                    <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+                      ניהול עמוד TikTok עסקי:
+                    </div>
+
+                    <BulletList items={tiktokManagement.items} gap={8} />
+                  </div>
+                )}
               </>
             )}
 
