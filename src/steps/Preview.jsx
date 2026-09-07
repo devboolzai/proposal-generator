@@ -223,7 +223,7 @@ export default function Preview() {
               {proposalData.clientTitle && ` – ${proposalData.clientTitle}`}
             </div>
             {proposalData.companyName && (
-              <div style={{ fontSize: "14px", color: "#475569", marginTop: "4px" }}>
+              <div style={{ fontSize: "15px", marginTop: "8px" }}>
                 עבור: {proposalData.companyName}
               </div>
             )}
@@ -243,7 +243,7 @@ export default function Preview() {
             <div style={styles.previewSectionTitle}>{section.title}</div>
 
             {section.description && (
-              <p style={{ fontSize: "13px", color: BRAND.ink, marginBottom: "12px" }}>
+              <p style={{ fontSize: "13px", marginBottom: "12px" }}>
                 {section.description}
               </p>
             )}
@@ -360,7 +360,7 @@ export default function Preview() {
                 style={{
                   fontSize: "15px",
                   fontWeight: "700",
-                  color: BRAND.purple,
+                  
                   marginTop: "8px",
                 }}
               >
@@ -400,7 +400,7 @@ export default function Preview() {
               style={{
                 fontSize: "16px",
                 fontWeight: "700",
-                color: BRAND.purple,
+                
                 marginBottom: "16px",
               }}
             >
@@ -491,7 +491,7 @@ export default function Preview() {
                         height: "40px",
                       }}
                     />
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>
+                    <div style={{ fontSize: "12px", }}>
                       חתימה וחותמת
                     </div>
                   </div>
@@ -504,7 +504,7 @@ export default function Preview() {
                         height: "40px",
                       }}
                     />
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>
+                    <div style={{ fontSize: "12px",  }}>
                       תאריך
                     </div>
                   </div>
