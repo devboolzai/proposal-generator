@@ -123,6 +123,33 @@ function findAtomicBlocks(root) {
 }
 
 /**
+ * Where to cut between the body and the tail.
+ *
+ * Cutting exactly on the tail element's top edge is brittle: it is the
+ * boundary of a block, so a pixel of drift either way moves a whole line
+ * across the page break — which is how סה"כ ended up above the notes.
+ *
+ * The margin between the last body block and the first tail block is dead
+ * space, and cutting anywhere inside it looks identical. So cut down the
+ * middle of that gap: the result is the same, and it now takes half the gap
+ * of drift, rather than one pixel, to put a line on the wrong page.
+ */
+function tailCutPoint(tailTop, blocks) {
+  // Bottom of the last body line (סה"כ), and top of the first tail line (הערות).
+  let gapStart = -Infinity;
+  let gapEnd = Infinity;
+
+  for (const b of blocks) {
+    if (b.bottom <= tailTop + 0.5) gapStart = Math.max(gapStart, b.bottom);
+    else if (b.top >= tailTop - 0.5) gapEnd = Math.min(gapEnd, b.top);
+  }
+
+  if (!Number.isFinite(gapStart) || !Number.isFinite(gapEnd)) return tailTop;
+
+  return gapEnd > gapStart ? (gapStart + gapEnd) / 2 : tailTop;
+}
+
+/**
  * Move a page break up so it lands between blocks instead of through one.
  *
  * The only case that still cuts is a single block taller than a whole page —
@@ -142,26 +169,32 @@ function snapToSafeBreak(desired, blocks, pageStart) {
   return highestTop;
 }
 
-/** Copy a horizontal band out of the full capture into its own canvas. */
-function sliceCanvas(source, fromPx, heightPx, cssWidth) {
+/**
+ * Copy a horizontal band out of the full capture into its own canvas.
+ *
+ * `scale` is measured from the canvas html2canvas actually returned rather
+ * than assumed to be CAPTURE_SCALE. The two are not always equal — the
+ * capture is laid out in a cloned document and its height is rounded — and
+ * because the error is proportional it is invisible at the top of the page
+ * and worst at the bottom, which is exactly where the tail boundary sits.
+ * Assuming the ratio used to drag the last body line onto the notes page.
+ */
+function sliceCanvas(source, fromPx, heightPx, cssWidth, scale) {
+  const sx = 0;
+  const sy = Math.round(fromPx * scale.y);
+  const sWidth = Math.min(Math.round(cssWidth * scale.x), source.width);
+  const sHeight = Math.min(Math.round(heightPx * scale.y), source.height - sy);
+
   const out = document.createElement("canvas");
-  out.width = Math.round(cssWidth * CAPTURE_SCALE);
-  out.height = Math.round(heightPx * CAPTURE_SCALE);
+  out.width = sWidth;
+  out.height = Math.max(1, sHeight);
 
   const ctx = out.getContext("2d");
   ctx.fillStyle = BRAND.paper;
   ctx.fillRect(0, 0, out.width, out.height);
-  ctx.drawImage(
-    source,
-    0,
-    Math.round(fromPx * CAPTURE_SCALE),
-    out.width,
-    out.height,
-    0,
-    0,
-    out.width,
-    out.height
-  );
+  if (sHeight > 0) {
+    ctx.drawImage(source, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+  }
 
   return out.toDataURL("image/jpeg", JPEG_QUALITY);
 }
@@ -240,6 +273,9 @@ export async function generatePdf(proposalData, proposalId, { returnBlob = false
     windowHeight: element.scrollHeight,
   });
 
+  // What the capture really came out at, in canvas px per CSS px.
+  const scale = { x: canvas.width / cssWidth, y: canvas.height / cssHeight };
+
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 
   // ── Page 1: branded cover, full bleed ──
@@ -250,7 +286,9 @@ export async function generatePdf(proposalData, proposalId, { returnBlob = false
   const pageHeightPx = usableHeightMm * pxPerMm;
 
   // ── Body pages: everything above the tail ──
-  const bodyEndPx = hasTail ? tailTop : cssHeight;
+  // The notes open the last page, so the total above them has to stay on the
+  // page before it — the cut goes in the whitespace that separates the two.
+  const bodyEndPx = hasTail ? tailCutPoint(tailTop, blocks) : cssHeight;
   let cursorPx = 0;
   let guard = 0;
 
@@ -266,7 +304,7 @@ export async function generatePdf(proposalData, proposalId, { returnBlob = false
 
     pdf.addPage();
     pdf.addImage(
-      sliceCanvas(canvas, cursorPx, heightPx, cssWidth),
+      sliceCanvas(canvas, cursorPx, heightPx, cssWidth, scale),
       "JPEG",
       0,
       MARGIN_TOP_MM,
@@ -279,7 +317,9 @@ export async function generatePdf(proposalData, proposalId, { returnBlob = false
 
   // ── Tail page: notes + appendix, always exactly one page ──
   if (hasTail) {
-    const tailHeightPx = cssHeight - tailTop;
+    // Starts where the body stopped, so no band of the capture is dropped
+    // or drawn twice.
+    const tailHeightPx = cssHeight - bodyEndPx;
     const tailHeightMm = tailHeightPx / pxPerMm;
 
     // Shrink to fit rather than spilling onto a second page.
@@ -289,7 +329,7 @@ export async function generatePdf(proposalData, proposalId, { returnBlob = false
 
     pdf.addPage();
     pdf.addImage(
-      sliceCanvas(canvas, tailTop, tailHeightPx, cssWidth),
+      sliceCanvas(canvas, bodyEndPx, tailHeightPx, cssWidth, scale),
       "JPEG",
       (A4_WIDTH_MM - drawWidthMm) / 2,
       MARGIN_TOP_MM,
