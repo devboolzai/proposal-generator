@@ -350,7 +350,7 @@ export default function Preview() {
                   .map((row, i) => (
                     <tr key={i}>
                       <td style={styles.previewTd}>{row.description}</td>
-                      <td style={styles.previewTd}>{row.amount}</td>
+                      <td style={styles.previewTd}>{row.amount} ש"ח</td>
                       <td style={styles.previewTd}>{row.unit}</td>
                       {proposalData.pricingRows.some((r) => r.note) && (
                         <td style={styles.previewTd}>{row.note}</td>
@@ -374,8 +374,8 @@ export default function Preview() {
                 }}
               >
                 {proposalData.totalMonths
-                  ? `סה"כ: ${proposalData.totalAmount} * ${proposalData.totalMonths} = ${proposalData.totalAmount * proposalData.totalMonths}`
-                  : `סה"כ: ${proposalData.totalAmount}`}
+                  ? `סה"כ: ${proposalData.totalAmount} * ${proposalData.totalMonths} = ${proposalData.totalAmount * proposalData.totalMonths} ש"ח`
+                  : `סה"כ: ${proposalData.totalAmount} ש"ח`}
               </div>
             )}
           </div>
