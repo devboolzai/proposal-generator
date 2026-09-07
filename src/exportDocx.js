@@ -361,7 +361,10 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
   }
 
   // ── Notes ──
+  // Same rule as the PDF: the notes open a page of their own, so the pricing
+  // table and its total stay together on the page above.
   if (activeNotes.length > 0) {
+    docChildren.push(new Paragraph({ children: [new PageBreak()] }));
     docChildren.push(heading("הערות", 2));
     activeNotes.forEach((note) => docChildren.push(bulletItem(note, "noteBullets")));
     docChildren.push(rtlParagraph([], { spacing: { after: 200 } }));
