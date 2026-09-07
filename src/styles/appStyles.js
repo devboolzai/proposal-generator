@@ -312,7 +312,7 @@ export const styles = {
     marginBottom: "6px",
   },
   previewDate: {
-    fontSize: "13px",
+    fontSize: "15px",
     color: DOC.ink,
     textDecoration: "underline",
   },
