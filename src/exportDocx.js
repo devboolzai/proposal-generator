@@ -35,7 +35,6 @@ const COLOR_BORDER = "000000";
 const COLOR_LIGHT_BORDER = "000000";
 // Fills stay light so the text on them survives; black would swallow it.
 const COLOR_HEADER_BG = "F5F5F5";
-const COLOR_NOTES_BG = "F5F5F5";
 
 const border = (color = COLOR_LIGHT_BORDER) => ({
   style: BorderStyle.SINGLE,
