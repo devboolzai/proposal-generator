@@ -16,6 +16,22 @@ export const BRAND = {
   rule: "#3B3B3B",
 };
 
+// The proposal document itself is monochrome. Only two things still carry
+// brand colour: the cover image on page 1, and the footer drawn on every page
+// by exportPdf.js — neither of which reads from here.
+//
+// Kept separate from BRAND so that the app's own chrome stays branded, and so
+// a future change to the palette cannot tint the document again by accident.
+// The Word export mirrors these as the COLOR_* constants in exportDocx.js.
+export const DOC = {
+  ink: "#000000",
+  rule: "#000000",
+  paper: "#FFFFFF",
+  // Table headers keep a fill so rows still read as a table; neutral grey
+  // rather than black, which would swallow the text on top of it.
+  headerFill: "#F5F5F5",
+};
+
 // Bullet glyphs used in the reference proposals: a check for what the
 // service includes, a diamond for money lines, a hollow circle for notes.
 export const GLYPH = {
@@ -272,8 +288,8 @@ export const styles = {
   },
   // Preview styles
   preview: {
-    background: BRAND.paper,
-    color: BRAND.ink,
+    background: DOC.paper,
+    color: DOC.ink,
     direction: "rtl",
     fontFamily: "var(--font-stack)",
     padding: "48px",
@@ -292,17 +308,17 @@ export const styles = {
   previewProposalId: {
     fontSize: "14px",
     fontWeight: "700",
-    color: BRAND.purple,
+    color: DOC.ink,
     marginBottom: "6px",
   },
   previewDate: {
-    fontSize: "13px",
-    color: BRAND.ink,
+    fontSize: "15px",
+    color: DOC.ink,
     textDecoration: "underline",
   },
   previewTitle: {
-    fontSize: "17px",
-    color: BRAND.ink,
+    fontSize: "20px",
+    color: DOC.ink,
     textDecoration: "underline",
     textAlign: "center",
     marginBottom: "28px",
@@ -313,13 +329,13 @@ export const styles = {
   previewSectionTitle: {
     fontSize: "15px",
     fontWeight: "700",
-    color: BRAND.purple,
+    color: DOC.ink,
     marginBottom: "8px",
   },
   previewLead: {
     fontSize: "13px",
     fontWeight: "700",
-    color: BRAND.ink,
+    color: DOC.ink,
     marginBottom: "8px",
   },
   previewTable: {
@@ -328,29 +344,29 @@ export const styles = {
     marginBottom: "22px",
   },
   previewTh: {
-    background: BRAND.cream,
+    background: DOC.headerFill,
     padding: "9px 13px",
-    border: `1px solid ${BRAND.purple}`,
+    border: `1px solid ${DOC.rule}`,
     textAlign: "right",
     fontSize: "13px",
     fontWeight: "700",
-    color: BRAND.purple,
+    color: DOC.ink,
   },
   previewTd: {
     padding: "9px 13px",
-    border: `1px solid ${BRAND.rule}`,
+    border: `1px solid ${DOC.rule}`,
     textAlign: "right",
     fontSize: "13px",
   },
   previewNotesTitle: {
     fontSize: "15px",
     fontWeight: "700",
-    color: BRAND.purple,
+    color: DOC.ink,
     marginBottom: "10px",
   },
   previewNote: {
     fontSize: "11.5px",
-    color: BRAND.ink,
+    color: DOC.ink,
     marginBottom: "3px",
     paddingRight: "16px",
     position: "relative",
@@ -358,7 +374,7 @@ export const styles = {
   previewAppendixTitle: {
     fontSize: "15px",
     fontWeight: "700",
-    color: BRAND.purple,
+    color: DOC.ink,
     textAlign: "center",
     margin: "26px 0 18px",
   },

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProposal } from "../state/useProposal";
-import { styles, BRAND, GLYPH } from "../styles/appStyles";
+import { styles, DOC, GLYPH } from "../styles/appStyles";
 import { generateDocx } from "../exportDocx";
 import { generatePdf } from "../exportPdf";
 import { getAccessCode, setAccessCode } from "../share/api";
@@ -11,7 +11,16 @@ import ShareLinkModal from "./ShareLinkModal";
 // up flush against the left edge of the page. Drawing the bullet as a real
 // positioned element keeps it on the right in both the browser and the PDF,
 // and preserves the hanging indent for items that wrap.
-function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple }) {
+// `gap` is the space after the whole list; `itemGap` the space between items.
+// Keep itemGap in step with the `after` spacing of bulletItem() in
+// exportDocx.js, so the Word file breathes the same way as the PDF.
+function BulletList({
+  items,
+  gap = 16,
+  itemGap = 8,
+  glyph = GLYPH.check,
+  color = DOC.ink,
+}) {
   return (
     <ul style={{ margin: `0 14px ${gap}px 0`, padding: 0, listStyleType: "none" }}>
       {items.map((item, i) => (
@@ -21,7 +30,7 @@ function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple
             position: "relative",
             paddingRight: "20px",
             fontSize: "13px",
-            marginBottom: "3px",
+            marginBottom: `${itemGap}px`,
           }}
         >
           <span style={{ position: "absolute", right: 0, color }}>{glyph}</span>
@@ -29,6 +38,49 @@ function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple
         </li>
       ))}
     </ul>
+  );
+}
+
+// A social section carries one entry per selected platform. Facebook,
+// Instagram and LinkedIn all describe the same work, so they collapse into a
+// single "ניהול עמוד עסקי כולל" block; TikTok keeps its own, because its items
+// differ. Merging with a Set rather than picking the first match means that if
+// one of them ever stops being identical, its extra lines show up instead of
+// being silently dropped.
+function SocialSection({ section }) {
+  const platforms = section.managementSections || [];
+
+  const general = [
+    ...new Set(
+      platforms.filter((ms) => ms.platform !== "TikTok").flatMap((ms) => ms.items)
+    ),
+  ];
+  const tiktok = platforms.find((ms) => ms.platform === "TikTok");
+
+  return (
+    <>
+      {/* Not tied to any platform — shown even for a TikTok-only proposal. */}
+      <div style={styles.previewLead}>הקמת עמודים או תחילת פעילות:</div>
+      <BulletList items={section.setupItems} gap={16} />
+
+      {general.length > 0 && (
+        <>
+          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+            ניהול עמוד עסקי כולל:
+          </div>
+          <BulletList items={general} gap={8} />
+        </>
+      )}
+
+      {tiktok?.items?.length > 0 && (
+        <>
+          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+            ניהול עמוד TikTok עסקי:
+          </div>
+          <BulletList items={tiktok.items} gap={8} />
+        </>
+      )}
+    </>
   );
 }
 
@@ -144,7 +196,7 @@ export default function Preview() {
             {proposalIdBusy
               ? "⏳ מקצה מספר הצעה…"
               : proposalIdError ||
-                "כדי להפיק את ההצעה יש להקצות לה מספר. נדרש קוד גישה."}
+              "כדי להפיק את ההצעה יש להקצות לה מספר. נדרש קוד גישה."}
           </div>
 
           {!proposalIdBusy && (
@@ -223,7 +275,7 @@ export default function Preview() {
               {proposalData.clientTitle && ` – ${proposalData.clientTitle}`}
             </div>
             {proposalData.companyName && (
-              <div style={{ fontSize: "14px", color: "#475569", marginTop: "4px" }}>
+              <div style={{ fontSize: "15px", marginTop: "8px" }}>
                 עבור: {proposalData.companyName}
               </div>
             )}
@@ -243,31 +295,12 @@ export default function Preview() {
             <div style={styles.previewSectionTitle}>{section.title}</div>
 
             {section.description && (
-              <p style={{ fontSize: "13px", color: BRAND.ink, marginBottom: "12px" }}>
+              <p style={{ fontSize: "13px", marginBottom: "12px" }}>
                 {section.description}
               </p>
             )}
 
-            {section.type === "social" && (
-              <>
-                <div
-                  style={styles.previewLead}
-                >
-                  הקמת עמודים או תחילת פעילות:
-                </div>
-                <BulletList items={section.setupItems} gap={16} />
-                {section.managementSections.map((ms, mIdx) => (
-                  <div key={mIdx}>
-                    <div
-                      style={{ ...styles.previewLead, marginTop: "12px" }}
-                    >
-                      ניהול עמוד {ms.platform} עסקי:
-                    </div>
-                    <BulletList items={ms.items} gap={8} />
-                  </div>
-                ))}
-              </>
-            )}
+            {section.type === "social" && <SocialSection section={section} />}
 
             {section.type === "campaigns" && (
               <>
@@ -341,7 +374,7 @@ export default function Preview() {
                   .map((row, i) => (
                     <tr key={i}>
                       <td style={styles.previewTd}>{row.description}</td>
-                      <td style={styles.previewTd}>{row.amount}</td>
+                      <td style={styles.previewTd}>{row.amount} ש"ח</td>
                       <td style={styles.previewTd}>{row.unit}</td>
                       {proposalData.pricingRows.some((r) => r.note) && (
                         <td style={styles.previewTd}>{row.note}</td>
@@ -360,11 +393,13 @@ export default function Preview() {
                 style={{
                   fontSize: "15px",
                   fontWeight: "700",
-                  color: BRAND.purple,
+
                   marginTop: "8px",
                 }}
               >
-                סה"כ: {proposalData.totalAmount}
+                {proposalData.totalMonths
+                  ? `סה"כ: ${proposalData.totalAmount} * ${proposalData.totalMonths} = ${proposalData.totalAmount * proposalData.totalMonths} ש"ח`
+                  : `סה"כ: ${proposalData.totalAmount} ש"ח`}
               </div>
             )}
           </div>
@@ -375,144 +410,144 @@ export default function Preview() {
             down is forced onto its own single page, matching how the printed
             proposals are laid out. */}
         <div id="proposal-tail">
-        {allNotes.length > 0 && (
-          <div>
-            <div style={styles.previewNotesTitle}>הערות</div>
-            {allNotes.map((note, i) => (
-              <div key={i} style={styles.previewNote}>
-                <span style={{ position: "absolute", right: 0, fontSize: "9px" }}>
-                  {GLYPH.circle}
-                </span>
-                {note}
-              </div>
-            ))}
-          </div>
-        )}
+          {allNotes.length > 0 && (
+            <div>
+              <div style={styles.previewNotesTitle}>הערות</div>
+              {allNotes.map((note, i) => (
+                <div key={i} style={styles.previewNote}>
+                  <span style={{ position: "absolute", right: 0, fontSize: "9px" }}>
+                    {GLYPH.circle}
+                  </span>
+                  {note}
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Appendix */}
-        {proposalData.includeAppendix && (
-          <div
-            style={{
-              marginTop: "26px",
-            }}
-          >
+          {/* Appendix */}
+          {proposalData.includeAppendix && (
             <div
               style={{
-                fontSize: "16px",
-                fontWeight: "700",
-                color: BRAND.purple,
-                marginBottom: "16px",
+                marginTop: "26px",
               }}
             >
-              נספח א' – הזמנת שירותי פרסום דיגיטליים
-            </div>
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                marginBottom: "12px",
-              }}
-            >
-              פרטי הלקוח:
-            </div>
-            <table style={styles.previewTable}>
-              <tbody>
-                {[
-                  ["שם העסק:", "", "מספר ח.פ/ע.מ:", ""],
-                  ["כתובת העסק:", "", "טלפון:", ""],
-                  ["שם פרטי:", "", "שם משפחה:", ""],
-                  ["ת.ז.:", "", 'דוא"ל:', ""],
-                ].map((row, i) => (
-                  <tr key={i}>
-                    {row.map((cell, j) => (
-                      <td
-                        key={j}
+              <div
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "700",
+
+                  marginBottom: "16px",
+                }}
+              >
+                נספח א' – הזמנת שירותי פרסום דיגיטליים
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  marginBottom: "12px",
+                }}
+              >
+                פרטי הלקוח:
+              </div>
+              <table style={styles.previewTable}>
+                <tbody>
+                  {[
+                    ["שם העסק:", "", "מספר ח.פ/ע.מ:", ""],
+                    ["כתובת העסק:", "", "טלפון:", ""],
+                    ["שם פרטי:", "", "שם משפחה:", ""],
+                    ["ת.ז.:", "", 'דוא"ל:', ""],
+                  ].map((row, i) => (
+                    <tr key={i}>
+                      {row.map((cell, j) => (
+                        <td
+                          key={j}
+                          style={{
+                            ...styles.previewTd,
+                            fontWeight: j % 2 === 0 ? "600" : "400",
+                            minWidth: j % 2 === 0 ? "100px" : "150px",
+                          }}
+                        >
+                          {cell || "\u00A0"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {proposalData.includeSignature && (
+                <div style={{ marginTop: "24px" }}>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    הרשאה לחיוב כרטיס אשראי:
+                  </div>
+                  <table style={styles.previewTable}>
+                    <tbody>
+                      {[
+                        ["סוג הכרטיס:", "", "סכום החיוב:", ""],
+                        ["מספר הכרטיס:", "", "תוקף:", ""],
+                        ["CVV:", "", "", ""],
+                      ].map((row, i) => (
+                        <tr key={i}>
+                          {row.map((cell, j) => (
+                            <td
+                              key={j}
+                              style={{
+                                ...styles.previewTd,
+                                fontWeight: j % 2 === 0 ? "600" : "400",
+                              }}
+                            >
+                              {cell || "\u00A0"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: "40px",
+                    }}
+                  >
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div
                         style={{
-                          ...styles.previewTd,
-                          fontWeight: j % 2 === 0 ? "600" : "400",
-                          minWidth: j % 2 === 0 ? "100px" : "150px",
+                          borderBottom: `1px solid ${DOC.rule}`,
+                          marginBottom: "8px",
+                          height: "40px",
                         }}
-                      >
-                        {cell || "\u00A0"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {proposalData.includeSignature && (
-              <div style={{ marginTop: "24px" }}>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    marginBottom: "12px",
-                  }}
-                >
-                  הרשאה לחיוב כרטיס אשראי:
-                </div>
-                <table style={styles.previewTable}>
-                  <tbody>
-                    {[
-                      ["סוג הכרטיס:", "", "סכום החיוב:", ""],
-                      ["מספר הכרטיס:", "", "תוקף:", ""],
-                      ["CVV:", "", "", ""],
-                    ].map((row, i) => (
-                      <tr key={i}>
-                        {row.map((cell, j) => (
-                          <td
-                            key={j}
-                            style={{
-                              ...styles.previewTd,
-                              fontWeight: j % 2 === 0 ? "600" : "400",
-                            }}
-                          >
-                            {cell || "\u00A0"}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: "40px",
-                  }}
-                >
-                  <div style={{ textAlign: "center", flex: 1 }}>
-                    <div
-                      style={{
-                        borderBottom: "1px solid #1e293b",
-                        marginBottom: "8px",
-                        height: "40px",
-                      }}
-                    />
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>
-                      חתימה וחותמת
+                      />
+                      <div style={{ fontSize: "12px", }}>
+                        חתימה וחותמת
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ width: "60px" }} />
-                  <div style={{ textAlign: "center", flex: 1 }}>
-                    <div
-                      style={{
-                        borderBottom: "1px solid #1e293b",
-                        marginBottom: "8px",
-                        height: "40px",
-                      }}
-                    />
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>
-                      תאריך
+                    <div style={{ width: "60px" }} />
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div
+                        style={{
+                          borderBottom: `1px solid ${DOC.rule}`,
+                          marginBottom: "8px",
+                          height: "40px",
+                        }}
+                      />
+                      <div style={{ fontSize: "12px", }}>
+                        תאריך
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
