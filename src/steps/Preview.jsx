@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProposal } from "../state/useProposal";
-import { styles, BRAND, GLYPH } from "../styles/appStyles";
+import { styles, DOC, GLYPH } from "../styles/appStyles";
 import { generateDocx } from "../exportDocx";
 import { generatePdf } from "../exportPdf";
 import { getAccessCode, setAccessCode } from "../share/api";
@@ -11,7 +11,16 @@ import ShareLinkModal from "./ShareLinkModal";
 // up flush against the left edge of the page. Drawing the bullet as a real
 // positioned element keeps it on the right in both the browser and the PDF,
 // and preserves the hanging indent for items that wrap.
-function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple }) {
+// `gap` is the space after the whole list; `itemGap` the space between items.
+// Keep itemGap in step with the `after` spacing of bulletItem() in
+// exportDocx.js, so the Word file breathes the same way as the PDF.
+function BulletList({
+  items,
+  gap = 16,
+  itemGap = 8,
+  glyph = GLYPH.check,
+  color = DOC.ink,
+}) {
   return (
     <ul style={{ margin: `0 14px ${gap}px 0`, padding: 0, listStyleType: "none" }}>
       {items.map((item, i) => (
@@ -21,7 +30,7 @@ function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple
             position: "relative",
             paddingRight: "20px",
             fontSize: "13px",
-            marginBottom: "3px",
+            marginBottom: `${itemGap}px`,
           }}
         >
           <span style={{ position: "absolute", right: 0, color }}>{glyph}</span>
@@ -486,7 +495,7 @@ export default function Preview() {
                   <div style={{ textAlign: "center", flex: 1 }}>
                     <div
                       style={{
-                        borderBottom: "1px solid #1e293b",
+                        borderBottom: `1px solid ${DOC.rule}`,
                         marginBottom: "8px",
                         height: "40px",
                       }}
@@ -499,7 +508,7 @@ export default function Preview() {
                   <div style={{ textAlign: "center", flex: 1 }}>
                     <div
                       style={{
-                        borderBottom: "1px solid #1e293b",
+                        borderBottom: `1px solid ${DOC.rule}`,
                         marginBottom: "8px",
                         height: "40px",
                       }}

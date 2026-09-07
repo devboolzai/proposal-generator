@@ -27,11 +27,15 @@ async function getCoverImage() {
 
 const FONT = "Jura";           // Latin/English font
 const FONT_CS = "Fb Gandalf";  // Hebrew (Complex Script) font
-const COLOR_PRIMARY = "4338CA";
-const COLOR_HEADER_BG = "EEF2FF";
-const COLOR_BORDER = "C7D2FE";
-const COLOR_LIGHT_BORDER = "E2E8F0";
-const COLOR_NOTES_BG = "F8FAFC";
+// The document is monochrome; only the cover image on page 1 carries brand
+// colour. Mirrors DOC in styles/appStyles.js, which does the same job for the
+// on-screen preview and therefore for the PDF — keep the two in step.
+const COLOR_PRIMARY = "000000";
+const COLOR_BORDER = "000000";
+const COLOR_LIGHT_BORDER = "000000";
+// Fills stay light so the text on them survives; black would swallow it.
+const COLOR_HEADER_BG = "F5F5F5";
+const COLOR_NOTES_BG = "F5F5F5";
 
 const border = (color = COLOR_LIGHT_BORDER) => ({
   style: BorderStyle.SINGLE,
@@ -90,7 +94,8 @@ function bulletItem(text, ref = "bullets") {
     bidirectional: true,
     alignment: AlignmentType.RIGHT,
     numbering: { reference: ref, level: 0 },
-    spacing: { after: 60 },
+    // Twips — 120 = 6pt, matching BulletList's 8px itemGap in Preview.jsx.
+    spacing: { after: 120 },
     children: [rtlRun(text, { size: 22 })],
   });
 }
@@ -169,7 +174,7 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
           rtlRun(`הנידון: ${proposalData.subject}`, {
             size: 32,
             
-            color: "312E81",
+            color: COLOR_PRIMARY,
           }),
         ],
         { spacing: { after: 300 } }
@@ -183,7 +188,7 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
 
     if (section.description) {
       docChildren.push(
-        rtlParagraph([rtlRun(section.description, { size: 22, color: "475569" })], {
+        rtlParagraph([rtlRun(section.description, { size: 22, color: COLOR_PRIMARY })], {
           spacing: { after: 200 },
         })
       );
@@ -351,7 +356,7 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
             rtlRun(`סה"כ: ${proposalData.totalAmount}`, {
               size: 26,
               bold: true,
-              color: "312E81",
+              color: COLOR_PRIMARY,
             }),
           ],
           { spacing: { before: 120, after: 300 } }
@@ -520,7 +525,7 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
                       bidirectional: true,
                       alignment: AlignmentType.CENTER,
                       children: [
-                        rtlRun("חתימה וחותמת", { size: 20, color: "64748B" }),
+                        rtlRun("חתימה וחותמת", { size: 20, color: COLOR_PRIMARY }),
                       ],
                     }),
                   ],
@@ -539,7 +544,7 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
                       bidirectional: true,
                       alignment: AlignmentType.CENTER,
                       children: [
-                        rtlRun("תאריך", { size: 20, color: "64748B" }),
+                        rtlRun("תאריך", { size: 20, color: COLOR_PRIMARY }),
                       ],
                     }),
                   ],
