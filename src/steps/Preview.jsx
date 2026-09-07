@@ -153,7 +153,7 @@ export default function Preview() {
             {proposalIdBusy
               ? "⏳ מקצה מספר הצעה…"
               : proposalIdError ||
-                "כדי להפיק את ההצעה יש להקצות לה מספר. נדרש קוד גישה."}
+              "כדי להפיק את ההצעה יש להקצות לה מספר. נדרש קוד גישה."}
           </div>
 
           {!proposalIdBusy && (
@@ -369,11 +369,13 @@ export default function Preview() {
                 style={{
                   fontSize: "15px",
                   fontWeight: "700",
-                  
+
                   marginTop: "8px",
                 }}
               >
-                סה"כ: {proposalData.totalAmount}
+                {proposalData.totalMonths
+                  ? `סה"כ: ${proposalData.totalAmount} * ${proposalData.totalMonths} = ${proposalData.totalAmount * proposalData.totalMonths}`
+                  : `סה"כ: ${proposalData.totalAmount}`}
               </div>
             )}
           </div>
@@ -384,144 +386,144 @@ export default function Preview() {
             down is forced onto its own single page, matching how the printed
             proposals are laid out. */}
         <div id="proposal-tail">
-        {allNotes.length > 0 && (
-          <div>
-            <div style={styles.previewNotesTitle}>הערות</div>
-            {allNotes.map((note, i) => (
-              <div key={i} style={styles.previewNote}>
-                <span style={{ position: "absolute", right: 0, fontSize: "9px" }}>
-                  {GLYPH.circle}
-                </span>
-                {note}
-              </div>
-            ))}
-          </div>
-        )}
+          {allNotes.length > 0 && (
+            <div>
+              <div style={styles.previewNotesTitle}>הערות</div>
+              {allNotes.map((note, i) => (
+                <div key={i} style={styles.previewNote}>
+                  <span style={{ position: "absolute", right: 0, fontSize: "9px" }}>
+                    {GLYPH.circle}
+                  </span>
+                  {note}
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Appendix */}
-        {proposalData.includeAppendix && (
-          <div
-            style={{
-              marginTop: "26px",
-            }}
-          >
+          {/* Appendix */}
+          {proposalData.includeAppendix && (
             <div
               style={{
-                fontSize: "16px",
-                fontWeight: "700",
-                
-                marginBottom: "16px",
+                marginTop: "26px",
               }}
             >
-              נספח א' – הזמנת שירותי פרסום דיגיטליים
-            </div>
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                marginBottom: "12px",
-              }}
-            >
-              פרטי הלקוח:
-            </div>
-            <table style={styles.previewTable}>
-              <tbody>
-                {[
-                  ["שם העסק:", "", "מספר ח.פ/ע.מ:", ""],
-                  ["כתובת העסק:", "", "טלפון:", ""],
-                  ["שם פרטי:", "", "שם משפחה:", ""],
-                  ["ת.ז.:", "", 'דוא"ל:', ""],
-                ].map((row, i) => (
-                  <tr key={i}>
-                    {row.map((cell, j) => (
-                      <td
-                        key={j}
+              <div
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "700",
+
+                  marginBottom: "16px",
+                }}
+              >
+                נספח א' – הזמנת שירותי פרסום דיגיטליים
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  marginBottom: "12px",
+                }}
+              >
+                פרטי הלקוח:
+              </div>
+              <table style={styles.previewTable}>
+                <tbody>
+                  {[
+                    ["שם העסק:", "", "מספר ח.פ/ע.מ:", ""],
+                    ["כתובת העסק:", "", "טלפון:", ""],
+                    ["שם פרטי:", "", "שם משפחה:", ""],
+                    ["ת.ז.:", "", 'דוא"ל:', ""],
+                  ].map((row, i) => (
+                    <tr key={i}>
+                      {row.map((cell, j) => (
+                        <td
+                          key={j}
+                          style={{
+                            ...styles.previewTd,
+                            fontWeight: j % 2 === 0 ? "600" : "400",
+                            minWidth: j % 2 === 0 ? "100px" : "150px",
+                          }}
+                        >
+                          {cell || "\u00A0"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {proposalData.includeSignature && (
+                <div style={{ marginTop: "24px" }}>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    הרשאה לחיוב כרטיס אשראי:
+                  </div>
+                  <table style={styles.previewTable}>
+                    <tbody>
+                      {[
+                        ["סוג הכרטיס:", "", "סכום החיוב:", ""],
+                        ["מספר הכרטיס:", "", "תוקף:", ""],
+                        ["CVV:", "", "", ""],
+                      ].map((row, i) => (
+                        <tr key={i}>
+                          {row.map((cell, j) => (
+                            <td
+                              key={j}
+                              style={{
+                                ...styles.previewTd,
+                                fontWeight: j % 2 === 0 ? "600" : "400",
+                              }}
+                            >
+                              {cell || "\u00A0"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: "40px",
+                    }}
+                  >
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div
                         style={{
-                          ...styles.previewTd,
-                          fontWeight: j % 2 === 0 ? "600" : "400",
-                          minWidth: j % 2 === 0 ? "100px" : "150px",
+                          borderBottom: `1px solid ${DOC.rule}`,
+                          marginBottom: "8px",
+                          height: "40px",
                         }}
-                      >
-                        {cell || "\u00A0"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {proposalData.includeSignature && (
-              <div style={{ marginTop: "24px" }}>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    marginBottom: "12px",
-                  }}
-                >
-                  הרשאה לחיוב כרטיס אשראי:
-                </div>
-                <table style={styles.previewTable}>
-                  <tbody>
-                    {[
-                      ["סוג הכרטיס:", "", "סכום החיוב:", ""],
-                      ["מספר הכרטיס:", "", "תוקף:", ""],
-                      ["CVV:", "", "", ""],
-                    ].map((row, i) => (
-                      <tr key={i}>
-                        {row.map((cell, j) => (
-                          <td
-                            key={j}
-                            style={{
-                              ...styles.previewTd,
-                              fontWeight: j % 2 === 0 ? "600" : "400",
-                            }}
-                          >
-                            {cell || "\u00A0"}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: "40px",
-                  }}
-                >
-                  <div style={{ textAlign: "center", flex: 1 }}>
-                    <div
-                      style={{
-                        borderBottom: `1px solid ${DOC.rule}`,
-                        marginBottom: "8px",
-                        height: "40px",
-                      }}
-                    />
-                    <div style={{ fontSize: "12px", }}>
-                      חתימה וחותמת
+                      />
+                      <div style={{ fontSize: "12px", }}>
+                        חתימה וחותמת
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ width: "60px" }} />
-                  <div style={{ textAlign: "center", flex: 1 }}>
-                    <div
-                      style={{
-                        borderBottom: `1px solid ${DOC.rule}`,
-                        marginBottom: "8px",
-                        height: "40px",
-                      }}
-                    />
-                    <div style={{ fontSize: "12px",  }}>
-                      תאריך
+                    <div style={{ width: "60px" }} />
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div
+                        style={{
+                          borderBottom: `1px solid ${DOC.rule}`,
+                          marginBottom: "8px",
+                          height: "40px",
+                        }}
+                      />
+                      <div style={{ fontSize: "12px", }}>
+                        תאריך
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
