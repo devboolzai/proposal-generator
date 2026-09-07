@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProposal } from "../state/useProposal";
 import { styles, BRAND, GLYPH } from "../styles/appStyles";
 import { generateDocx } from "../exportDocx";
 import { generatePdf } from "../exportPdf";
+import { getAccessCode, setAccessCode } from "../share/api";
 import ShareLinkModal from "./ShareLinkModal";
 
 // Native list markers (list-style-type: disc) are positioned by html2canvas
@@ -31,11 +32,47 @@ function BulletList({ items, gap = 16, glyph = GLYPH.check, color = BRAND.purple
   );
 }
 
+const idGate = {
+  marginBottom: "16px",
+  padding: "12px 16px",
+  borderRadius: "8px",
+  background: "rgba(99,102,241,0.12)",
+  border: "1px solid rgba(99,102,241,0.35)",
+  color: "#c7d2fe",
+  fontSize: "13px",
+  textAlign: "center",
+};
+
 export default function Preview() {
-  const { proposalData, setPreviewMode, generatePreviewContent } = useProposal();
+  const {
+    proposalData,
+    setPreviewMode,
+    generatePreviewContent,
+    proposalId,
+    proposalIdBusy,
+    proposalIdError,
+    ensureProposalId,
+  } = useProposal();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState(null);
   const [sharing, setSharing] = useState(false);
+  const [code, setCode] = useState(getAccessCode);
+
+  // This is where the proposal earns its number: the first screen that can
+  // turn it into a document. ensureProposalId is idempotent, so coming back
+  // to the preview after editing keeps the number the client already saw.
+  useEffect(() => {
+    const stored = getAccessCode();
+    if (stored) ensureProposalId(stored);
+  }, [ensureProposalId]);
+
+  const handleAllocate = async () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    // Only remember a code that actually worked, so a typo does not get
+    // cached and silently 401 the send flow later.
+    if (await ensureProposalId(trimmed)) setAccessCode(trimmed);
+  };
 
   const sections = generatePreviewContent();
   const activeNotes = proposalData.notes
@@ -47,13 +84,17 @@ export default function Preview() {
     setPdfBusy(true);
     setPdfError(null);
     try {
-      await generatePdf(proposalData);
+      await generatePdf(proposalData, proposalId);
     } catch (err) {
       setPdfError(err.message || "יצירת ה-PDF נכשלה.");
     } finally {
       setPdfBusy(false);
     }
   };
+
+  // No number, no document. A proposal that reached a client without one
+  // would be exactly the thing this feature exists to prevent.
+  const exportsBlocked = !proposalId || pdfBusy;
 
   return (
     <div>
@@ -67,22 +108,23 @@ export default function Preview() {
         }}
       >
         <button
-          style={styles.btn("lg")}
+          style={{ ...styles.btn("lg"), opacity: exportsBlocked ? 0.5 : 1 }}
           onClick={() => setSharing(true)}
-          disabled={pdfBusy}
+          disabled={exportsBlocked}
         >
           🔗 שליחה לחתימה
         </button>
         <button
-          style={styles.btn("lg")}
+          style={{ ...styles.btn("lg"), opacity: exportsBlocked ? 0.5 : 1 }}
           onClick={handleDownloadPdf}
-          disabled={pdfBusy}
+          disabled={exportsBlocked}
         >
           {pdfBusy ? "⏳ מייצר PDF…" : "📕 הורדה כ-PDF"}
         </button>
         <button
-          style={styles.btn("lg")}
-          onClick={() => generateDocx(proposalData, sections, allNotes)}
+          style={{ ...styles.btn("lg"), opacity: exportsBlocked ? 0.5 : 1 }}
+          onClick={() => generateDocx(proposalData, sections, allNotes, proposalId)}
+          disabled={exportsBlocked}
         >
           📄 הורדה כ-Word
         </button>
@@ -93,6 +135,47 @@ export default function Preview() {
           ← חזרה לעריכה
         </button>
       </div>
+
+      {/* Allocation gate. Only ever shown before a number exists — once one is
+          held it can never be lost or re-requested, so this cannot come back. */}
+      {!proposalId && (
+        <div style={idGate}>
+          <div style={{ marginBottom: proposalIdBusy ? 0 : "10px" }}>
+            {proposalIdBusy
+              ? "⏳ מקצה מספר הצעה…"
+              : proposalIdError ||
+                "כדי להפיק את ההצעה יש להקצות לה מספר. נדרש קוד גישה."}
+          </div>
+
+          {!proposalIdBusy && (
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                flexWrap: "wrap",
+                justifyContent: "center",
+              }}
+            >
+              <input
+                style={{ ...styles.input, width: "auto", flex: "0 1 220px" }}
+                type="password"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAllocate()}
+                placeholder="קוד הגישה של המערכת"
+                autoComplete="off"
+              />
+              <button
+                style={styles.btn("primary")}
+                onClick={handleAllocate}
+                disabled={!code.trim()}
+              >
+                הקצאת מספר הצעה
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {pdfError && (
         <div
@@ -114,13 +197,24 @@ export default function Preview() {
       {/* An overlay, never a replacement: generatePdf rasterises the live
           #proposal-preview node below, so it has to stay mounted. */}
       {sharing && (
-        <ShareLinkModal proposalData={proposalData} onClose={() => setSharing(false)} />
+        <ShareLinkModal
+          proposalData={proposalData}
+          proposalId={proposalId}
+          onClose={() => setSharing(false)}
+        />
       )}
 
       <div style={styles.preview} id="proposal-preview">
         {/* Header */}
         <div style={styles.previewHeader}>
           <div>
+            {/* The PDF is a raster of this node, so printing the number here
+                is what puts it in the document — and makes it uneditable. */}
+            {proposalId && (
+              <div style={styles.previewProposalId}>
+                הצעת מחיר מס' {proposalId}
+              </div>
+            )}
             <div style={styles.previewDate}>
               תאריך: {proposalData.date}
             </div>

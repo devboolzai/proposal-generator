@@ -95,18 +95,36 @@ function bulletItem(text, ref = "bullets") {
   });
 }
 
-export async function generateDocx(proposalData, sections, activeNotes) {
+export async function generateDocx(proposalData, sections, activeNotes, proposalId) {
+  if (!Number.isInteger(proposalId)) {
+    throw new Error("לא הוקצה מספר להצעה — יש לרענן את מסך התצוגה המקדימה.");
+  }
+
   const coverImageData = await getCoverImage();
   const docChildren = [];
 
   // ── Header ──
+  // Same line, and same position, as the on-screen preview and the PDF.
+  docChildren.push(
+    rtlParagraph(
+      [
+        rtlRun(`הצעת מחיר מס' ${proposalId}`, {
+          size: 24,
+          bold: true,
+          color: COLOR_PRIMARY,
+        }),
+      ],
+      { spacing: { after: 80 } }
+    )
+  );
+
   docChildren.push(
     rtlParagraph(
       [
         rtlRun(`תאריך: ${proposalData.date}`, {
           size: 22,
           color: COLOR_PRIMARY,
-          
+
         }),
       ],
       { spacing: { after: 80 } }
@@ -604,8 +622,9 @@ export async function generateDocx(proposalData, sections, activeNotes) {
   });
 
   const buffer = await Packer.toBlob(doc);
-  const fileName = proposalData.companyName
-    ? `הצעת_מחיר_${proposalData.companyName.replace(/\s+/g, "_")}.docx`
-    : `הצעת_מחיר_${proposalData.date.replace(/\//g, "-")}.docx`;
-  saveAs(buffer, fileName);
+  // The number leads, so a folder of proposals sorts and searches by it.
+  const who = proposalData.companyName
+    ? proposalData.companyName.replace(/\s+/g, "_")
+    : proposalData.date.replace(/\//g, "-");
+  saveAs(buffer, `הצעת_מחיר_${proposalId}_${who}.docx`);
 }

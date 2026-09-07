@@ -28,6 +28,9 @@ export default async function handler(req, res) {
 
     sendJson(res, 200, {
       status: meta.status,
+      // Not a secret — it is printed on the PDF the client is about to read,
+      // and having it on screen is what lets them quote it back to us.
+      proposalId: meta.proposalId ?? null,
       clientName: meta.clientName,
       companyName: meta.companyName,
       subject: meta.subject,

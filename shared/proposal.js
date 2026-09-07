@@ -29,6 +29,20 @@ import { randomBytes } from "node:crypto";
 
 const PREFIX = "proposals";
 
+/**
+ * The running proposal number lives in its own blob, outside the proposals
+ * prefix so that listing proposals can never trip over it.
+ *
+ * NEVER DELETE THIS BLOB. There is no way to rebuild it from the store
+ * without reading every meta.json, so losing it restarts numbering at
+ * FIRST_PROPOSAL_ID and hands out numbers that are already on documents
+ * sitting with clients.
+ */
+export const COUNTER_PATH = "counters/proposal-id.json";
+
+/** The number the first proposal gets. Everything after is +1. */
+export const FIRST_PROPOSAL_ID = 50001;
+
 /** 24 random bytes, base64url-encoded — always exactly 32 characters. */
 const TOKEN_BYTES = 24;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,64}$/;
@@ -81,14 +95,75 @@ export function paths(token) {
   };
 }
 
+// ---------- the proposal number ----------
+
+/**
+ * The number a person quotes on the phone. Unlike the token it is not a
+ * secret and carries no entropy — it only has to be unique and stable, so
+ * anything that is not a whole number at or above the first id is refused
+ * rather than coerced.
+ */
+export function isValidProposalId(value) {
+  return Number.isInteger(value) && value >= FIRST_PROPOSAL_ID;
+}
+
+/**
+ * Pure half of allocation: given the stored counter, the number to hand out
+ * and the counter to store back. Absent counter means this is the first
+ * proposal ever.
+ *
+ * A corrupt counter throws instead of falling back to FIRST_PROPOSAL_ID.
+ * Blocking new proposals is recoverable; re-issuing a number that is already
+ * printed on a signed document is not.
+ */
+export function takeProposalId(counter) {
+  if (counter === null || counter === undefined) {
+    return {
+      proposalId: FIRST_PROPOSAL_ID,
+      counter: { next: FIRST_PROPOSAL_ID + 1 },
+    };
+  }
+
+  const next = counter?.next;
+  if (!isValidProposalId(next)) {
+    throw new Error(
+      `The proposal id counter at ${COUNTER_PATH} is unreadable — refusing to allocate a number that may already be in use`,
+    );
+  }
+
+  return { proposalId: next, counter: { next: next + 1 } };
+}
+
+/** How the number is worded wherever it is shown to a person. */
+export function proposalRef(proposalId) {
+  if (!isValidProposalId(proposalId)) {
+    throw new Error("Invalid proposal id");
+  }
+  return `הצעה מס' ${proposalId}`;
+}
+
 // ---------- the record ----------
 
 export function newMeta(
-  { token, clientName, companyName, subject, clientEmail, fileName, expiresInDays },
+  {
+    token,
+    proposalId,
+    clientName,
+    companyName,
+    subject,
+    clientEmail,
+    fileName,
+    expiresInDays,
+  },
   now = new Date(),
 ) {
   if (!isValidToken(token)) {
     throw new Error("Invalid proposal token");
+  }
+  // The browser echoes back the number the server allocated it, so this is
+  // both a typo guard and the reason no record can exist without a number.
+  if (!isValidProposalId(proposalId)) {
+    throw new Error("A valid proposal id is required");
   }
   if (typeof clientEmail !== "string" || !EMAIL_PATTERN.test(clientEmail)) {
     throw new Error("A valid client email is required");
@@ -103,6 +178,9 @@ export function newMeta(
 
   return {
     token,
+    // Written once here and never touched again — nothing in either project
+    // rewrites it, which is what makes the number on the PDF trustworthy.
+    proposalId,
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + days * DAY_MS).toISOString(),
     status: STATUS.PENDING,
@@ -169,4 +247,13 @@ export const PDF_PUT_OPTIONS = {
   addRandomSuffix: false,
   allowOverwrite: true,
   contentType: "application/pdf",
+};
+
+export const COUNTER_PUT_OPTIONS = {
+  ...PRIVATE,
+  addRandomSuffix: false,
+  allowOverwrite: true,
+  contentType: "application/json",
+  // A cached counter would hand the same number to the next proposal.
+  cacheControlMaxAge: 0,
 };

@@ -19,7 +19,7 @@ import { getAccessCode, setAccessCode } from "../share/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ShareLinkModal({ proposalData, onClose }) {
+export default function ShareLinkModal({ proposalData, proposalId, onClose }) {
   const [clientEmail, setClientEmail] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(DEFAULT_EXPIRY_DAYS);
   const [accessCode, setCode] = useState(getAccessCode);
@@ -51,6 +51,7 @@ export default function ShareLinkModal({ proposalData, onClose }) {
     try {
       const created = await createSignLink({
         proposalData,
+        proposalId,
         clientEmail: clientEmail.trim(),
         expiresInDays,
         accessCode: accessCode.trim(),
@@ -119,7 +120,8 @@ export default function ShareLinkModal({ proposalData, onClose }) {
         {!result ? (
           <>
             <p style={hint}>
-              נייצר קובץ PDF של ההצעה, ניצור קישור אישי ונשלח אותו במייל ללקוח.
+              נייצר קובץ PDF של <strong style={{ color: "#c7d2fe" }}>הצעה מס' {proposalId}</strong>,
+              ניצור קישור אישי ונשלח אותו במייל ללקוח.
               הלקוח יוכל לקרוא ולחתום ישירות מהטלפון.
             </p>
 

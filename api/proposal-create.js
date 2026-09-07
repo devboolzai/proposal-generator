@@ -8,18 +8,31 @@ import { allowMethod, fail, readBody, requireAccessCode, sendJson } from "../sha
 // The PDF is uploaded straight from the browser afterwards (it is
 // too large for a function body), and `proposal-ready` closes the
 // loop once the bytes have landed.
+//
+// The proposal number is not minted here: it was allocated by
+// /api/proposal-id when the preview opened, so that it could be
+// printed into the PDF the browser is about to upload. The browser
+// echoes it back and newMeta re-validates it.
 
 export default async function handler(req, res) {
   if (!allowMethod(req, res, "POST")) return;
   if (!requireAccessCode(req, res)) return;
 
   try {
-    const { clientName, companyName, subject, clientEmail, fileName, expiresInDays } =
-      readBody(req);
+    const {
+      proposalId,
+      clientName,
+      companyName,
+      subject,
+      clientEmail,
+      fileName,
+      expiresInDays,
+    } = readBody(req);
 
     const token = newToken();
     const meta = newMeta({
       token,
+      proposalId,
       clientName,
       companyName,
       subject,
@@ -35,6 +48,7 @@ export default async function handler(req, res) {
     // where blob-upload re-validates them anyway.
     sendJson(res, 201, {
       token,
+      proposalId: meta.proposalId,
       pathname: paths(token).original,
       expiresAt: meta.expiresAt,
     });

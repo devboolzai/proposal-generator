@@ -159,6 +159,19 @@ export default function SignPage({ token }) {
               <div style={styles.cardTitle}>
                 {proposal.subject || "הצעת מחיר"}
               </div>
+              {/* Older proposals predate numbering and simply have none. */}
+              {proposal.proposalId && (
+                <div
+                  style={{
+                    marginBottom: "10px",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: BRAND.purpleSoft,
+                  }}
+                >
+                  הצעה מס' {proposal.proposalId}
+                </div>
+              )}
               <p style={styles.note}>
                 {proposal.clientName ? `שלום ${proposal.clientName}, ` : ""}
                 לפניכם הצעת המחיר{proposal.companyName ? ` עבור ${proposal.companyName}` : ""}.

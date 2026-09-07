@@ -4,6 +4,7 @@ import {
   renderEmail,
   renderPlain,
 } from "../../../shared/emailTemplate.js";
+import { isValidProposalId, proposalRef } from "../../../shared/proposal.js";
 
 // ============================================================
 // The two emails that go out the moment a proposal is signed:
@@ -48,8 +49,15 @@ export async function sendSignedProposal({ meta, pdfBytes, fileName, downloadUrl
   const subject = meta.subject || "הצעת מחיר";
   const owner = process.env.OWNER_EMAIL;
 
+  // Proposals signed from links created before numbering existed have no id.
+  const numbered = isValidProposalId(meta.proposalId);
+  const reference = numbered ? proposalRef(meta.proposalId) : undefined;
+  // Both audiences file the signed copy by number, so it goes in the subject.
+  const numberTag = numbered ? ` (${meta.proposalId})` : "";
+
   const toClient = {
     heading: "תודה, ההצעה נחתמה",
+    reference,
     paragraphs: [
       meta.clientName ? `שלום ${meta.clientName},` : "שלום,",
       `הצעת המחיר "${subject}" נחתמה בהצלחה בתאריך ${signedOn}.`,
@@ -63,6 +71,7 @@ export async function sendSignedProposal({ meta, pdfBytes, fileName, downloadUrl
 
   const toOwner = {
     heading: "הצעת מחיר נחתמה",
+    reference,
     paragraphs: [
       `${meta.clientName || "לקוח"}${meta.companyName ? ` (${meta.companyName})` : ""} חתם/ה על "${subject}".`,
       `שם החותם: ${meta.signerName}`,
@@ -74,11 +83,21 @@ export async function sendSignedProposal({ meta, pdfBytes, fileName, downloadUrl
   };
 
   const sends = [
-    send({ to: meta.clientEmail, subject: `העותק החתום – ${subject}`, content: toClient, attachments }),
+    send({
+      to: meta.clientEmail,
+      subject: `העותק החתום – ${subject}${numberTag}`,
+      content: toClient,
+      attachments,
+    }),
   ];
   if (owner) {
     sends.push(
-      send({ to: owner, subject: `✍ נחתם: ${subject} – ${meta.clientName || ""}`, content: toOwner, attachments }),
+      send({
+        to: owner,
+        subject: `✍ נחתם: ${subject}${numberTag} – ${meta.clientName || ""}`,
+        content: toOwner,
+        attachments,
+      }),
     );
   }
 

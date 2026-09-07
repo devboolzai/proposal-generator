@@ -25,6 +25,7 @@ export const DEFAULT_EXPIRY_DAYS = 30;
 /**
  * @param {object} args
  * @param {object} args.proposalData    the live proposal state
+ * @param {number} args.proposalId      allocated when the preview opened
  * @param {string} args.clientEmail     where the invitation goes
  * @param {number} args.expiresInDays
  * @param {string} args.accessCode
@@ -33,6 +34,7 @@ export const DEFAULT_EXPIRY_DAYS = 30;
  */
 export async function createSignLink({
   proposalData,
+  proposalId,
   clientEmail,
   expiresInDays,
   accessCode,
@@ -40,13 +42,18 @@ export async function createSignLink({
 }) {
   // generatePdf reads the live DOM, so #proposal-preview has to still be
   // mounted and visible — the modal is an overlay for exactly this reason.
+  // The number is already painted into that DOM, so the captured PDF carries
+  // it; what goes to the server below is the same number, for the record.
   onProgress("מייצר את קובץ ה-PDF…");
-  const { blob, fileName } = await generatePdf(proposalData, { returnBlob: true });
+  const { blob, fileName } = await generatePdf(proposalData, proposalId, {
+    returnBlob: true,
+  });
 
   onProgress("יוצר קישור…");
   const { token, pathname } = await postJson(
     "/api/proposal-create",
     {
+      proposalId,
       clientName: proposalData.clientName,
       companyName: proposalData.companyName,
       subject: proposalData.subject,

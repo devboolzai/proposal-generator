@@ -38,11 +38,18 @@ export function formatDateHe(iso) {
 /**
  * @param {object} opts
  * @param {string} opts.heading      the big line at the top
+ * @param {string} [opts.reference]  e.g. "הצעה מס' 50001" — omitted for
+ *        proposals created before numbering existed
  * @param {string[]} opts.paragraphs plain text, escaped here
  * @param {{label: string, url: string}} [opts.cta]
  * @param {string} [opts.note]       small print under the button
  */
-export function renderEmail({ heading, paragraphs = [], cta, note }) {
+export function renderEmail({ heading, reference, paragraphs = [], cta, note }) {
+  const refLine = reference
+    ? `<p style="margin:-10px 0 18px;font-size:13px;font-weight:700;color:${PURPLE_SOFT};
+                letter-spacing:0.02em;">${escapeHtml(reference)}</p>`
+    : "";
+
   const body = paragraphs
     .map(
       (text) =>
@@ -84,6 +91,7 @@ export function renderEmail({ heading, paragraphs = [], cta, note }) {
           <h1 style="margin:0 0 18px;font-size:21px;font-weight:800;color:${PURPLE};">${escapeHtml(
             heading,
           )}</h1>
+          ${refLine}
           ${body}
           ${button}
           ${smallPrint}
@@ -101,9 +109,10 @@ export function renderEmail({ heading, paragraphs = [], cta, note }) {
 }
 
 /** Plain-text fallback, for clients that refuse HTML. */
-export function renderPlain({ heading, paragraphs = [], cta, note }) {
+export function renderPlain({ heading, reference, paragraphs = [], cta, note }) {
   return [
     heading,
+    reference,
     "",
     ...paragraphs,
     cta ? `\n${cta.label}: ${cta.url}` : "",
