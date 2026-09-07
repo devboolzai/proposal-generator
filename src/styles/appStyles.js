@@ -289,6 +289,12 @@ export const styles = {
     justifyContent: "space-between",
     marginBottom: "28px",
   },
+  previewProposalId: {
+    fontSize: "14px",
+    fontWeight: "700",
+    color: BRAND.purple,
+    marginBottom: "6px",
+  },
   previewDate: {
     fontSize: "13px",
     color: BRAND.ink,

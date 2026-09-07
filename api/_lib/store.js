@@ -1,5 +1,12 @@
 import { get, head, put } from "@vercel/blob";
-import { META_PUT_OPTIONS, PDF_PUT_OPTIONS, PRIVATE, paths } from "../../shared/proposal.js";
+import {
+  COUNTER_PATH,
+  COUNTER_PUT_OPTIONS,
+  META_PUT_OPTIONS,
+  PDF_PUT_OPTIONS,
+  PRIVATE,
+  paths,
+} from "../../shared/proposal.js";
 
 // ============================================================
 // Blob I/O for this project.
@@ -44,4 +51,27 @@ export async function blobExists(pathname) {
   } catch {
     return false;
   }
+}
+
+/**
+ * The proposal-number counter, or null when it has never been written.
+ *
+ * Only a genuine absence may return null — that is what seeds the very first
+ * proposal. A blob that exists but will not read has to throw, because
+ * seeding on top of an existing store would re-issue numbers that are already
+ * on documents with clients.
+ */
+export async function readCounter() {
+  if (!(await blobExists(COUNTER_PATH))) return null;
+
+  const result = await get(COUNTER_PATH, { ...PRIVATE, useCache: false });
+  if (!result || result.statusCode !== 200) {
+    throw new Error("Could not read the proposal id counter");
+  }
+  return JSON.parse(await new Response(result.stream).text());
+}
+
+export async function writeCounter(counter) {
+  await put(COUNTER_PATH, JSON.stringify(counter, null, 2), COUNTER_PUT_OPTIONS);
+  return counter;
 }

@@ -68,10 +68,12 @@ async function getCoverImage() {
   return _coverDataUrl;
 }
 
-function buildFileName(proposalData) {
-  return proposalData.companyName
-    ? `הצעת_מחיר_${proposalData.companyName.replace(/\s+/g, "_")}.pdf`
-    : `הצעת_מחיר_${proposalData.date.replace(/\//g, "-")}.pdf`;
+function buildFileName(proposalData, proposalId) {
+  // The number leads, so a folder of proposals sorts and searches by it.
+  const who = proposalData.companyName
+    ? proposalData.companyName.replace(/\s+/g, "_")
+    : proposalData.date.replace(/\//g, "-");
+  return `הצעת_מחיר_${proposalId}_${who}.pdf`;
 }
 
 function hexToRgb(hex) {
@@ -186,14 +188,23 @@ function drawFooters(pdf) {
 /**
  * Build the proposal PDF from the rendered preview.
  *
+ * The number itself is not drawn here: it is already painted into
+ * #proposal-preview, so the capture picks it up like the rest of the page.
+ * It is only needed for the file name.
+ *
  * @param {object} proposalData      state slice, used for the file name
+ * @param {number} proposalId        the allocated proposal number
  * @param {object} [options]
  * @param {boolean} [options.returnBlob]  resolve with the blob instead of
  *        downloading it — this is the hook the future "email the proposal"
  *        dialog will use to get bytes it can attach.
  * @returns {Promise<{blob: Blob, fileName: string}|void>}
  */
-export async function generatePdf(proposalData, { returnBlob = false } = {}) {
+export async function generatePdf(proposalData, proposalId, { returnBlob = false } = {}) {
+  if (!Number.isInteger(proposalId)) {
+    throw new Error("לא הוקצה מספר להצעה — יש לרענן את מסך התצוגה המקדימה.");
+  }
+
   const element = document.getElementById(PREVIEW_ID);
   if (!element) {
     throw new Error(
@@ -289,7 +300,7 @@ export async function generatePdf(proposalData, { returnBlob = false } = {}) {
 
   drawFooters(pdf);
 
-  const fileName = buildFileName(proposalData);
+  const fileName = buildFileName(proposalData, proposalId);
   const blob = pdf.output("blob");
 
   if (returnBlob) return { blob, fileName };

@@ -71,6 +71,7 @@ describe("paths", () => {
 describe("newMeta", () => {
   const now = new Date("2026-01-01T10:00:00.000Z");
   const input = {
+    proposalId: 50001,
     clientName: "דנה כהן",
     companyName: "אקמה בע\"מ",
     subject: "ניהול סושיאל",
