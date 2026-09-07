@@ -41,6 +41,49 @@ function BulletList({
   );
 }
 
+// A social section carries one entry per selected platform. Facebook,
+// Instagram and LinkedIn all describe the same work, so they collapse into a
+// single "ניהול עמוד עסקי כולל" block; TikTok keeps its own, because its items
+// differ. Merging with a Set rather than picking the first match means that if
+// one of them ever stops being identical, its extra lines show up instead of
+// being silently dropped.
+function SocialSection({ section }) {
+  const platforms = section.managementSections || [];
+
+  const general = [
+    ...new Set(
+      platforms.filter((ms) => ms.platform !== "TikTok").flatMap((ms) => ms.items)
+    ),
+  ];
+  const tiktok = platforms.find((ms) => ms.platform === "TikTok");
+
+  return (
+    <>
+      {/* Not tied to any platform — shown even for a TikTok-only proposal. */}
+      <div style={styles.previewLead}>הקמת עמודים או תחילת פעילות:</div>
+      <BulletList items={section.setupItems} gap={16} />
+
+      {general.length > 0 && (
+        <>
+          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+            ניהול עמוד עסקי כולל:
+          </div>
+          <BulletList items={general} gap={8} />
+        </>
+      )}
+
+      {tiktok?.items?.length > 0 && (
+        <>
+          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
+            ניהול עמוד TikTok עסקי:
+          </div>
+          <BulletList items={tiktok.items} gap={8} />
+        </>
+      )}
+    </>
+  );
+}
+
 const idGate = {
   marginBottom: "16px",
   padding: "12px 16px",
@@ -66,16 +109,6 @@ export default function Preview() {
   const [pdfError, setPdfError] = useState(null);
   const [sharing, setSharing] = useState(false);
   const [code, setCode] = useState(getAccessCode);
-  const generalManagement = section.managementSections.find(
-    (ms) =>
-      ms.platform === "Facebook" ||
-      ms.platform === "Instagram" ||
-      ms.platform === "LinkedIn"
-  );
-
-  const tiktokManagement = section.managementSections.find(
-    (ms) => ms.platform === "TikTok"
-  );
 
   // This is where the proposal earns its number: the first screen that can
   // turn it into a document. ensureProposalId is idempotent, so coming back
@@ -267,35 +300,7 @@ export default function Preview() {
               </p>
             )}
 
-            {section.type === "social" && (
-              <>
-                <div
-                  style={styles.previewLead}
-                >
-                  הקמת עמודים או תחילת פעילות:
-                </div>
-                <BulletList items={section.setupItems} gap={16} />
-                {generalManagement && (
-                  <div>
-                    <div style={{ ...styles.previewLead, marginTop: "12px" }}>
-                      ניהול עמוד עסקי כולל:
-                    </div>
-
-                    <BulletList items={generalManagement.items} gap={8} />
-                  </div>
-                )}
-
-                {tiktokManagement && (
-                  <div>
-                    <div style={{ ...styles.previewLead, marginTop: "12px" }}>
-                      ניהול עמוד TikTok עסקי:
-                    </div>
-
-                    <BulletList items={tiktokManagement.items} gap={8} />
-                  </div>
-                )}
-              </>
-            )}
+            {section.type === "social" && <SocialSection section={section} />}
 
             {section.type === "campaigns" && (
               <>

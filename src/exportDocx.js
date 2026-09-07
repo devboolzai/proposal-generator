@@ -203,20 +203,32 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
       section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
       docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
 
-      section.managementSections.forEach((ms) => {
+      // Grouped exactly as SocialSection does it in Preview.jsx — Facebook,
+      // Instagram and LinkedIn describe the same work and collapse into one
+      // block, TikTok keeps its own. Keep the two in step.
+      const platforms = section.managementSections || [];
+      const general = [
+        ...new Set(
+          platforms
+            .filter((ms) => ms.platform !== "TikTok")
+            .flatMap((ms) => ms.items)
+        ),
+      ];
+      const tiktok = platforms.find((ms) => ms.platform === "TikTok");
+
+      const managementBlock = (title, items) => {
         docChildren.push(
-          rtlParagraph(
-            [
-              rtlRun(`ניהול עמוד ${ms.platform} עסקי:`, {
-                size: 22,
-                bold: true,
-              }),
-            ],
-            { spacing: { before: 160, after: 100 } }
-          )
+          rtlParagraph([rtlRun(title, { size: 22, bold: true })], {
+            spacing: { before: 160, after: 100 },
+          })
         );
-        ms.items.forEach((item) => docChildren.push(bulletItem(item)));
-      });
+        items.forEach((item) => docChildren.push(bulletItem(item)));
+      };
+
+      if (general.length > 0) managementBlock("ניהול עמוד עסקי כולל:", general);
+      if (tiktok?.items?.length > 0) {
+        managementBlock("ניהול עמוד TikTok עסקי:", tiktok.items);
+      }
     }
 
     if (section.type === "campaigns") {
