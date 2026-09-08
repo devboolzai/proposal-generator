@@ -68,6 +68,7 @@ export async function sendSignLink({ meta, signUrl }) {
   const { data, error } = await resend().emails.send({
     from: from(),
     to: [meta.clientEmail],
+    bcc: [from()],
     subject: subjectLine,
     html: renderEmail(content),
     text: renderPlain(content),
