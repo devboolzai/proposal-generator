@@ -398,8 +398,8 @@ export default function Preview() {
                 }}
               >
                 {proposalData.totalMonths
-                  ? `סה"כ: ${proposalData.totalAmount} * ${proposalData.totalMonths} = ${proposalData.totalAmount * proposalData.totalMonths} ש"ח`
-                  : `סה"כ: ${proposalData.totalAmount} ש"ח`}
+                  ? `סה"כ:  ${proposalData.totalAmount * proposalData.totalMonths} ש"ח + מע"מ`
+                  : `סה"כ: ${proposalData.totalAmount} ש"ח + מע"מ`}
               </div>
             )}
           </div>
