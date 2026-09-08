@@ -222,10 +222,10 @@ export default function ShareLinkModal({ proposalData, proposalId, onClose }) {
                     onChange={handleFileChange}
                     disabled={busy}
                   />
-                  <div style={{ ...hint, margin: "8px 0 0" }}>
+                  <div style={{ ...hint, margin: "8px 0 0", color: "red", fontSize: "12px",fontWeight: "bold" }}>
                     {pdfFile
                       ? `נבחר: ${pdfFile.name} — הקובץ הזה יישלח ללקוח במקום ההצעה שנוצרה.`
-                      : `יש לוודא שמספר ההצעה (${proposalId}) מופיעה בקובץ.`}
+                      : `*יש לוודא שמספר ההצעה (${proposalId}) מופיעה בקובץ.`}
                   </div>
                 </div>
               )}
