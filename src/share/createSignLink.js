@@ -1,5 +1,5 @@
 import { upload } from "@vercel/blob/client";
-import { generatePdf } from "../exportPdf";
+import { buildFileName, generatePdf } from "../exportPdf";
 import { ApiError, postJson } from "./api";
 
 // ============================================================
@@ -29,6 +29,9 @@ export const DEFAULT_EXPIRY_DAYS = 30;
  * @param {string} args.clientEmail     where the invitation goes
  * @param {number} args.expiresInDays
  * @param {string} args.accessCode
+ * @param {File|null} [args.pdfFile]  a PDF to send instead of capturing the
+ *        preview. When given, nothing is rasterised — the file is sent as-is,
+ *        so whoever supplies it owns getting the proposal number onto the page.
  * @param {(stage: string) => void} [args.onProgress]  Hebrew status line for the modal
  * @returns {Promise<{token: string, signUrl: string, expiresAt: string, fileName: string}>}
  */
@@ -38,16 +41,31 @@ export async function createSignLink({
   clientEmail,
   expiresInDays,
   accessCode,
+  pdfFile = null,
   onProgress = () => {},
 }) {
-  // generatePdf reads the live DOM, so #proposal-preview has to still be
-  // mounted and visible — the modal is an overlay for exactly this reason.
-  // The number is already painted into that DOM, so the captured PDF carries
-  // it; what goes to the server below is the same number, for the record.
-  onProgress("מייצר את קובץ ה-PDF…");
-  const { blob, fileName } = await generatePdf(proposalData, proposalId, {
-    returnBlob: true,
-  });
+  // Either the salesperson supplied the document, or we capture the preview.
+  // Both paths converge on a blob plus a file name; nothing downstream knows
+  // or cares which one produced them.
+  let blob;
+  let fileName;
+
+  if (pdfFile) {
+    onProgress("מכין את הקובץ שהועלה…");
+    blob = pdfFile;
+    // Deliberately not pdfFile.name: filing by proposal number only works if
+    // every proposal follows the same convention.
+    fileName = buildFileName(proposalData, proposalId);
+  } else {
+    // generatePdf reads the live DOM, so #proposal-preview has to still be
+    // mounted and visible — the modal is an overlay for exactly this reason.
+    // The number is already painted into that DOM, so the captured PDF carries
+    // it; what goes to the server below is the same number, for the record.
+    onProgress("מייצר את קובץ ה-PDF…");
+    ({ blob, fileName } = await generatePdf(proposalData, proposalId, {
+      returnBlob: true,
+    }));
+  }
 
   onProgress("יוצר קישור…");
   const { token, pathname } = await postJson(

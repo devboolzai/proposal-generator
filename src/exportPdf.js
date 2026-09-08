@@ -86,7 +86,11 @@ async function getCoverImage() {
   return _coverDataUrl;
 }
 
-function buildFileName(proposalData, proposalId) {
+/**
+ * Exported so a manually uploaded PDF files under the same name a generated
+ * one would — the number has to lead either way for a folder to sort by it.
+ */
+export function buildFileName(proposalData, proposalId) {
   // The number leads, so a folder of proposals sorts and searches by it.
   const who = proposalData.companyName
     ? proposalData.companyName.replace(/\s+/g, "_")
