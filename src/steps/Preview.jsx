@@ -252,6 +252,10 @@ export default function Preview() {
         <ShareLinkModal
           proposalData={proposalData}
           proposalId={proposalId}
+          // The same two arguments the Word download uses, so the copy filed
+          // in the archive is the document this screen is showing.
+          sections={sections}
+          notes={allNotes}
           onClose={() => setSharing(false)}
         />
       )}

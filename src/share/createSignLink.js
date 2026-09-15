@@ -1,5 +1,6 @@
 import { upload } from "@vercel/blob/client";
 import { buildFileName, generatePdf } from "../exportPdf";
+import { generateDocx } from "../exportDocx";
 import { ApiError, postJson } from "./api";
 
 // ============================================================
@@ -22,6 +23,13 @@ export const EXPIRY_OPTIONS = [
 
 export const DEFAULT_EXPIRY_DAYS = 30;
 
+// Mirrors DOCX_CONTENT_TYPE in shared/proposal.js, which cannot be imported
+// here: that module pulls in node:crypto and so never enters a browser bundle.
+// blob-upload.js checks the value against its own copy, so a drift fails loudly
+// at upload time rather than quietly storing the wrong type.
+const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 /**
  * @param {object} args
  * @param {object} args.proposalData    the live proposal state
@@ -32,6 +40,8 @@ export const DEFAULT_EXPIRY_DAYS = 30;
  * @param {File|null} [args.pdfFile]  a PDF to send instead of capturing the
  *        preview. When given, nothing is rasterised — the file is sent as-is,
  *        so whoever supplies it owns getting the proposal number onto the page.
+ * @param {Array} args.sections     preview content, for the archived Word copy
+ * @param {string[]} args.notes     the notes as shown, for the same
  * @param {(stage: string) => void} [args.onProgress]  Hebrew status line for the modal
  * @returns {Promise<{token: string, signUrl: string, expiresAt: string, fileName: string}>}
  */
@@ -42,6 +52,8 @@ export async function createSignLink({
   expiresInDays,
   accessCode,
   pdfFile = null,
+  sections = null,
+  notes = null,
   onProgress = () => {},
 }) {
   // Either the salesperson supplied the document, or we capture the preview.
@@ -68,7 +80,7 @@ export async function createSignLink({
   }
 
   onProgress("יוצר קישור…");
-  const { token, pathname } = await postJson(
+  const { token, pathname, docxPathname } = await postJson(
     "/api/proposal-create",
     {
       proposalId,
@@ -95,6 +107,38 @@ export async function createSignLink({
     });
   } catch (err) {
     throw new ApiError(err?.message || "העלאת הקובץ נכשלה", 0);
+  }
+
+  // The Word original goes up too, so the archive can hand back an editable
+  // document and not only a raster. It is built from the live form state, so
+  // a manually supplied PDF still gets one — the two simply won't match, which
+  // is the accepted cost of overriding the generated document.
+  //
+  // Has to happen before proposal-ready: blob-upload refuses to write to a
+  // record that has left `pending`.
+  //
+  // Never fatal. The client's document and their link are already in place;
+  // losing the archive copy is not worth failing a send the salesperson is
+  // watching. The archive shows DOC as unavailable for that proposal instead.
+  if (sections && docxPathname) {
+    onProgress("מעלה עותק Word…");
+    try {
+      const { blob: docxBlob } = await generateDocx(
+        proposalData,
+        sections,
+        notes ?? [],
+        proposalId,
+        { returnBlob: true },
+      );
+      await upload(docxPathname, docxBlob, {
+        access: "private",
+        contentType: DOCX_CONTENT_TYPE,
+        handleUploadUrl: "/api/blob-upload",
+        headers: { "x-app-code": accessCode },
+      });
+    } catch (err) {
+      console.error("docx archive upload failed", err);
+    }
   }
 
   onProgress("מסיים…");

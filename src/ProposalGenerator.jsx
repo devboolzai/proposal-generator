@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useProposal } from "./state/useProposal";
 import { styles } from "./styles/appStyles";
+import ProposalsArchive from "./steps/ProposalsArchive";
 import Step1ClientDetails from "./steps/Step1ClientDetails";
 import Step2Services from "./steps/Step2Services";
 import Step3Pricing from "./steps/Step3Pricing";
@@ -18,6 +20,7 @@ const LAST_STEP = STEPS.length;
 
 export default function ProposalGenerator() {
   const { step, setStep, setPreviewMode } = useProposal();
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const CurrentStep =
     STEPS.find((s) => s.num === step)?.Component ?? Step1ClientDetails;
@@ -35,6 +38,11 @@ export default function ProposalGenerator() {
           <p style={styles.headerSub}>Proposal Generator</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
+          {/* Always available: looking up a proposal that was already sent has
+              nothing to do with the one being written. */}
+          <button style={styles.btn()} onClick={() => setArchiveOpen(true)}>
+            📁 הצעות שנשלחו
+          </button>
           {step < LAST_STEP && (
             <button style={styles.btn("primary")} onClick={goToPreview}>
               תצוגה מקדימה →
@@ -42,6 +50,8 @@ export default function ProposalGenerator() {
           )}
         </div>
       </div>
+
+      {archiveOpen && <ProposalsArchive onClose={() => setArchiveOpen(false)} />}
 
       <div style={styles.stepBar}>
         {STEPS.map((s) => (

@@ -19,7 +19,13 @@ import { getAccessCode, setAccessCode } from "../share/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ShareLinkModal({ proposalData, proposalId, onClose }) {
+export default function ShareLinkModal({
+  proposalData,
+  proposalId,
+  sections,
+  notes,
+  onClose,
+}) {
   const [clientEmail, setClientEmail] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(DEFAULT_EXPIRY_DAYS);
   const [accessCode, setCode] = useState(getAccessCode);
@@ -100,6 +106,10 @@ export default function ShareLinkModal({ proposalData, proposalId, onClose }) {
         expiresInDays,
         accessCode: accessCode.trim(),
         pdfFile: manualPdf ? pdfFile : null,
+        // Archived whichever way the PDF was produced: a manually uploaded
+        // file still gets the generated Word copy filed beside it.
+        sections,
+        notes,
         onProgress: setStage,
       });
       setAccessCode(accessCode.trim());

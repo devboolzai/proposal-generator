@@ -15,6 +15,7 @@ import {
   ImageRun,
 } from "docx";
 import { saveAs } from "file-saver";
+import { buildFileName } from "./exportPdf";
 
 let _coverImageBuffer = null;
 async function getCoverImage() {
@@ -99,7 +100,19 @@ function bulletItem(text, ref = "bullets") {
   });
 }
 
-export async function generateDocx(proposalData, sections, activeNotes, proposalId) {
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.returnBlob]  hand back `{ blob, fileName }` instead
+ *        of saving to disk — that is how the send flow gets a copy to archive.
+ *        Mirrors generatePdf, so both documents are produced the same way.
+ */
+export async function generateDocx(
+  proposalData,
+  sections,
+  activeNotes,
+  proposalId,
+  { returnBlob = false } = {},
+) {
   if (!Number.isInteger(proposalId)) {
     throw new Error("לא הוקצה מספר להצעה — יש לרענן את מסך התצוגה המקדימה.");
   }
@@ -640,10 +653,11 @@ export async function generateDocx(proposalData, sections, activeNotes, proposal
     ],
   });
 
-  const buffer = await Packer.toBlob(doc);
-  // The number leads, so a folder of proposals sorts and searches by it.
-  const who = proposalData.companyName
-    ? proposalData.companyName.replace(/\s+/g, "_")
-    : proposalData.date.replace(/\//g, "-");
-  saveAs(buffer, `הצעת_מחיר_${proposalId}_${who}.docx`);
+  const blob = await Packer.toBlob(doc);
+  // Same stem as the PDF, so the two halves of one proposal sit together in a
+  // folder — and so docxFileName() on the server can derive one from the other.
+  const fileName = buildFileName(proposalData, proposalId).replace(/\.pdf$/i, ".docx");
+
+  if (returnBlob) return { blob, fileName };
+  saveAs(blob, fileName);
 }

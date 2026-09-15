@@ -1,11 +1,13 @@
-import { get, head, put } from "@vercel/blob";
+import { get, head, list, put } from "@vercel/blob";
 import {
   COUNTER_PATH,
   COUNTER_PUT_OPTIONS,
   META_PUT_OPTIONS,
   PDF_PUT_OPTIONS,
   PRIVATE,
+  PROPOSALS_PREFIX,
   paths,
+  tokenFromPath,
 } from "../../shared/proposal.js";
 
 // ============================================================
@@ -51,6 +53,57 @@ export async function blobExists(pathname) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Every proposal in the store, as `{ meta, has }` — `has` saying which of the
+ * token's other blobs exist, taken from the same listing rather than a head()
+ * per file.
+ *
+ * One listing plus one read per proposal. That is more work than an index
+ * blob would be, but an index cannot be trusted here: the signing app writes
+ * meta.json when a client signs and knows nothing about this project, so
+ * anything cached on this side would show signed proposals as unsigned. Read
+ * the records and the archive is right by construction.
+ *
+ * If this ever gets slow, the fix is a cache with a short TTL, not an index.
+ */
+export async function listProposals() {
+  const byToken = new Map();
+
+  let cursor;
+  do {
+    const page = await list({ prefix: PROPOSALS_PREFIX, cursor });
+    for (const blob of page.blobs) {
+      const token = tokenFromPath(blob.pathname);
+      if (!token) continue;
+      const entry = byToken.get(token) ?? new Set();
+      entry.add(blob.pathname);
+      byToken.set(token, entry);
+    }
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+
+  const records = await Promise.all(
+    [...byToken].map(async ([token, present]) => {
+      const key = paths(token);
+      // A folder without a readable record is not a proposal — a half-finished
+      // upload, most likely. Skipped rather than surfaced as a broken row.
+      const meta = await readMeta(token).catch(() => null);
+      if (!meta) return null;
+
+      return {
+        meta,
+        has: {
+          original: present.has(key.original),
+          signed: present.has(key.signed),
+          docx: present.has(key.docx),
+        },
+      };
+    }),
+  );
+
+  return records.filter(Boolean);
 }
 
 /**

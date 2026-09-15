@@ -4,6 +4,8 @@ import {
   newToken,
   isValidToken,
   paths,
+  tokenFromPath,
+  docxFileName,
   newMeta,
   isExpired,
   canTransition,
@@ -58,6 +60,7 @@ describe("paths", () => {
       meta: `proposals/${token}/meta.json`,
       original: `proposals/${token}/original.pdf`,
       signed: `proposals/${token}/signed.pdf`,
+      docx: `proposals/${token}/proposal.docx`,
     });
   });
 
@@ -65,6 +68,36 @@ describe("paths", () => {
     // Guards the whole store: every route reaches Blob through here, so a
     // traversal attempt can never become a real pathname.
     expect(() => paths("../other")).toThrow(/token/i);
+  });
+});
+
+describe("tokenFromPath", () => {
+  const token = "a".repeat(32);
+
+  it("reads the token back out of any of a proposal's keys", () => {
+    for (const key of ["meta.json", "original.pdf", "signed.pdf", "proposal.docx"]) {
+      expect(tokenFromPath(`proposals/${token}/${key}`)).toBe(token);
+    }
+  });
+
+  it("returns null for anything that is not one proposal's file", () => {
+    // The listing is untrusted input in the same way a token is: it decides
+    // which pathnames get turned back into Blob reads.
+    expect(tokenFromPath("counters/proposal-id.json")).toBeNull();
+    expect(tokenFromPath(`proposals/${token}`)).toBeNull();
+    expect(tokenFromPath(`proposals/${token}/nested/file.pdf`)).toBeNull();
+    expect(tokenFromPath("proposals/../secret/meta.json")).toBeNull();
+    expect(tokenFromPath(undefined)).toBeNull();
+  });
+});
+
+describe("docxFileName", () => {
+  it("swaps the pdf extension for docx", () => {
+    expect(docxFileName("הצעת_מחיר_50001_חברה.pdf")).toBe("הצעת_מחיר_50001_חברה.docx");
+  });
+
+  it("falls back when the record carries no file name", () => {
+    expect(docxFileName("")).toBe("proposal.docx");
   });
 });
 

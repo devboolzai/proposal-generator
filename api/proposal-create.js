@@ -46,10 +46,12 @@ export default async function handler(req, res) {
     // The browser uploads the PDF itself, so hand it the destination rather
     // than making it build one — that keeps the path rules on the server,
     // where blob-upload re-validates them anyway.
+    const key = paths(token);
     sendJson(res, 201, {
       token,
       proposalId: meta.proposalId,
-      pathname: paths(token).original,
+      pathname: key.original,
+      docxPathname: key.docx,
       expiresAt: meta.expiresAt,
     });
   } catch (err) {

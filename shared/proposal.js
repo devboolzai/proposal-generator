@@ -11,9 +11,10 @@ import { randomBytes } from "node:crypto";
 //
 // There is no database. One folder per proposal:
 //
-//   proposals/<token>/meta.json     the record
-//   proposals/<token>/original.pdf  what the client is asked to sign
-//   proposals/<token>/signed.pdf    written once, at signing time
+//   proposals/<token>/meta.json      the record
+//   proposals/<token>/original.pdf   what the client is asked to sign
+//   proposals/<token>/signed.pdf     written once, at signing time
+//   proposals/<token>/proposal.docx  the editable Word original
 //
 // Every blob is private; the token is both the key and the
 // secret, so nothing here may ever build a pathname out of an
@@ -28,6 +29,9 @@ import { randomBytes } from "node:crypto";
 // ============================================================
 
 const PREFIX = "proposals";
+
+/** Everything this system stores about proposals lives under here. */
+export const PROPOSALS_PREFIX = `${PREFIX}/`;
 
 /**
  * The running proposal number lives in its own blob, outside the proposals
@@ -78,9 +82,9 @@ export function isValidToken(token) {
 }
 
 /**
- * The three keys belonging to one proposal. Throws on a token that could
- * escape the prefix — every Blob call in both projects goes through here,
- * so this is the one place a traversal attempt has to be stopped.
+ * The keys belonging to one proposal. Throws on a token that could escape the
+ * prefix — every Blob call in both projects goes through here, so this is the
+ * one place a traversal attempt has to be stopped.
  */
 export function paths(token) {
   if (!isValidToken(token)) {
@@ -92,7 +96,25 @@ export function paths(token) {
     meta: `${base}/meta.json`,
     original: `${base}/original.pdf`,
     signed: `${base}/signed.pdf`,
+    docx: `${base}/proposal.docx`,
   };
+}
+
+/**
+ * The token a `proposals/<token>/…` pathname belongs to, or null when the
+ * pathname is not one of ours. Used to walk a listing back to its records.
+ */
+export function tokenFromPath(pathname) {
+  if (typeof pathname !== "string") return null;
+  const [prefix, token, ...rest] = pathname.split("/");
+  if (prefix !== PREFIX || rest.length !== 1 || !isValidToken(token)) return null;
+  return token;
+}
+
+/** What the Word copy is called wherever it is handed to a person. */
+export function docxFileName(fileName) {
+  const base = fileName || "proposal.pdf";
+  return `${base.replace(/\.pdf$/i, "")}.docx`;
 }
 
 // ---------- the proposal number ----------
@@ -247,6 +269,20 @@ export const PDF_PUT_OPTIONS = {
   addRandomSuffix: false,
   allowOverwrite: true,
   contentType: "application/pdf",
+};
+
+/**
+ * The Word original is uploaded alongside the PDF, so that the archive can
+ * hand back an editable document and not only a raster.
+ */
+export const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+export const DOCX_PUT_OPTIONS = {
+  ...PRIVATE,
+  addRandomSuffix: false,
+  allowOverwrite: true,
+  contentType: DOCX_CONTENT_TYPE,
 };
 
 export const COUNTER_PUT_OPTIONS = {
