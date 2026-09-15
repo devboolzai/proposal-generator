@@ -41,9 +41,22 @@ export default async function handler(req, res) {
         // archived shows DOC as unavailable instead of offering a dead link.
         has,
       }))
-      // Descending by number: the proposal numbers are monotonic, so this is
-      // newest-first without trusting a parsed date.
-      .sort((a, b) => b.proposalId - a.proposalId);
+      // Newest send first, by the actual timestamp.
+      //
+      // NOT by proposalId. That was the first attempt and it put freshly sent
+      // proposals into the middle of the list: the numbers in the store do not
+      // run in send order, so they cannot stand in for a date.
+      //
+      // An unparsable date sorts last rather than scrambling the rest — it is
+      // the one row a person cannot place by eye anyway.
+      .sort((a, b) => {
+        const at = Date.parse(a.sentAt);
+        const bt = Date.parse(b.sentAt);
+        if (Number.isNaN(at) && Number.isNaN(bt)) return b.proposalId - a.proposalId;
+        if (Number.isNaN(at)) return 1;
+        if (Number.isNaN(bt)) return -1;
+        return bt - at;
+      });
 
     // The listing changes on every send and every signature; a cached copy
     // would show a salesperson an archive missing the proposal they just sent.

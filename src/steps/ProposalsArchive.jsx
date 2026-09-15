@@ -20,6 +20,16 @@ import {
 // every download goes through downloadFile rather than a link.
 // ============================================================
 
+/** The send date as a person reads it, with the time the list is ordered by. */
+function formatSentAt(iso) {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "ללא תאריך";
+  return `${at.toLocaleDateString("he-IL")} ${at.toLocaleTimeString("he-IL", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
 const FILES = [
   { kind: "docx", label: "📄 DOC", has: "docx" },
   { kind: "original", label: "📕 PDF", has: "original" },
@@ -168,7 +178,9 @@ export default function ProposalsArchive({ onClose }) {
             </div>
 
             <div style={rowMeta}>
-              <span>{new Date(row.sentAt).toLocaleDateString("he-IL")}</span>
+              {/* Time as well as date: the list is ordered by this, so showing
+                  only the day makes several sends in one day look unsorted. */}
+              <span>{formatSentAt(row.sentAt)}</span>
               <span style={dot}>•</span>
               <span>{row.companyName || row.clientName || row.clientEmail}</span>
               {row.status === "signed" && (
