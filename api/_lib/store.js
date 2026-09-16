@@ -6,7 +6,9 @@ import {
   PDF_PUT_OPTIONS,
   PRIVATE,
   PROPOSALS_PREFIX,
+  isSupersededBy,
   paths,
+  supersede,
   tokenFromPath,
 } from "../../shared/proposal.js";
 
@@ -104,6 +106,40 @@ export async function listProposals() {
   );
 
   return records.filter(Boolean);
+}
+
+/** Every record carrying this proposal number, in no particular order. */
+export async function findByProposalId(proposalId) {
+  return (await listProposals())
+    .map(({ meta }) => meta)
+    .filter((meta) => meta.proposalId === proposalId);
+}
+
+/**
+ * Retire every earlier record of this proposal number, now that `token` is
+ * the live one: their links expire and the archive stops listing them.
+ *
+ * Each record is re-read right before it is rewritten, so a client who signed
+ * the old link a moment ago keeps their signature rather than having it
+ * overwritten by a listing that was already stale.
+ *
+ * @returns {Promise<string[]>} the tokens that were retired
+ */
+export async function supersedeOthers(proposalId, token, now = new Date()) {
+  const candidates = (await findByProposalId(proposalId)).filter((meta) =>
+    isSupersededBy(meta, proposalId, token),
+  );
+
+  const retired = await Promise.all(
+    candidates.map(async ({ token: oldToken }) => {
+      const fresh = await readMeta(oldToken);
+      if (!isSupersededBy(fresh, proposalId, token)) return null;
+      await writeMeta(oldToken, supersede(fresh, token, now));
+      return oldToken;
+    }),
+  );
+
+  return retired.filter(Boolean);
 }
 
 /**

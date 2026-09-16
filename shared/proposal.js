@@ -63,12 +63,17 @@ export const STATUS = {
   PENDING: "pending", // record created, PDF not uploaded yet
   SENT: "sent", // PDF in place, link is live
   SIGNED: "signed", // terminal
+  // Replaced by a later send of the same proposal number. Terminal, and its
+  // link is dead: supersede() also pulls expiresAt back to the moment of
+  // replacement, so the signing app refuses it without knowing this status.
+  SUPERSEDED: "superseded",
 };
 
 const NEXT_STATUS = {
-  [STATUS.PENDING]: [STATUS.SENT],
-  [STATUS.SENT]: [STATUS.SIGNED],
+  [STATUS.PENDING]: [STATUS.SENT, STATUS.SUPERSEDED],
+  [STATUS.SENT]: [STATUS.SIGNED, STATUS.SUPERSEDED],
   [STATUS.SIGNED]: [],
+  [STATUS.SUPERSEDED]: [],
 };
 
 // ---------- tokens and paths ----------
@@ -233,6 +238,42 @@ export function isExpired(meta, now = new Date()) {
 export function signedFileName(fileName) {
   const base = fileName || "proposal.pdf";
   return `${base.replace(/\.pdf$/i, "")}_חתום.pdf`;
+}
+
+/**
+ * The record of an earlier send, retired because `byToken` now carries the
+ * same proposal number to the client.
+ *
+ * Expiry is what actually kills the link: both the signing page and the
+ * signing route already refuse an expired record, so an old link stops
+ * working even on a signing app deployed before this status existed.
+ *
+ * A signed record cannot be superseded — assertTransition throws — because
+ * the signature is on that document, not on its replacement.
+ */
+export function supersede(meta, byToken, now = new Date()) {
+  assertTransition(meta.status, STATUS.SUPERSEDED);
+  const at = now.toISOString();
+  return {
+    ...meta,
+    status: STATUS.SUPERSEDED,
+    supersededAt: at,
+    supersededBy: byToken,
+    // Never extend: an already-expired link stays expired from its own date.
+    expiresAt: isExpired(meta, now) ? meta.expiresAt : at,
+  };
+}
+
+/**
+ * Whether `meta` is an earlier record of `proposalId` that a new send under
+ * token `byToken` should retire.
+ */
+export function isSupersededBy(meta, proposalId, byToken) {
+  return (
+    meta?.proposalId === proposalId &&
+    meta.token !== byToken &&
+    canTransition(meta.status, STATUS.SUPERSEDED)
+  );
 }
 
 export function canTransition(from, to) {

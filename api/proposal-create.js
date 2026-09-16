@@ -1,6 +1,6 @@
-import { newMeta, newToken, paths } from "../shared/proposal.js";
-import { writeMeta } from "./_lib/store.js";
-import { allowMethod, fail, readBody, requireAccessCode, sendJson } from "../shared/http.js";
+import { STATUS, newMeta, newToken, paths } from "../shared/proposal.js";
+import { findByProposalId, writeMeta } from "./_lib/store.js";
+import { allowMethod, fail, httpError, readBody, requireAccessCode, sendJson } from "../shared/http.js";
 
 // POST /api/proposal-create
 //
@@ -28,6 +28,16 @@ export default async function handler(req, res) {
       fileName,
       expiresInDays,
     } = readBody(req);
+
+    // Sending a number again replaces the earlier send (see proposal-ready),
+    // but a signed one is final: the client agreed to that document.
+    const existing = await findByProposalId(proposalId);
+    if (existing.some((meta) => meta.status === STATUS.SIGNED)) {
+      throw httpError(
+        409,
+        `הצעה מס' ${proposalId} כבר נחתמה ולא ניתן לשלוח אותה מחדש. יש ליצור הצעה חדשה.`,
+      );
+    }
 
     const token = newToken();
     const meta = newMeta({

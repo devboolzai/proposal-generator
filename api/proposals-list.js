@@ -21,6 +21,9 @@ export default async function handler(req, res) {
 
   try {
     const rows = (await listProposals())
+      // A superseded record was replaced by a later send of the same number,
+      // which is listed in its place.
+      .filter(({ meta }) => meta.status !== STATUS.SUPERSEDED)
       .filter(({ meta }) => meta.linkEmailedAt || meta.status === STATUS.SIGNED)
       .map(({ meta, has }) => ({
         token: meta.token,

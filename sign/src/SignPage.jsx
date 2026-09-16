@@ -241,9 +241,6 @@ export default function SignPage({ token }) {
                 {phase === "submitting" ? "⏳ שולח…" : "אישור וחתימה"}
               </button>
 
-              <p style={{ ...styles.note, fontSize: "12px", marginTop: "12px", textAlign: "center" }}>
-                לאחר החתימה יישלח אליכם עותק חתום במייל.
-              </p>
             </div>
           </>
         )}

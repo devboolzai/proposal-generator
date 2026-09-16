@@ -1,5 +1,5 @@
 import { STATUS, assertTransition, paths } from "../shared/proposal.js";
-import { blobExists, readMeta, writeMeta } from "./_lib/store.js";
+import { blobExists, readMeta, supersedeOthers, writeMeta } from "./_lib/store.js";
 import { allowMethod, fail, httpError, readBody, requireAccessCode, sendJson } from "../shared/http.js";
 import { signUrlFor } from "./_lib/signUrl.js";
 
@@ -28,6 +28,14 @@ export default async function handler(req, res) {
       assertTransition(meta.status, STATUS.SENT);
       meta.status = STATUS.SENT;
       await writeMeta(token, meta);
+    }
+
+    // Re-sending a proposal number replaces the earlier send: its link dies
+    // the moment this one goes live, never before, so a failed upload above
+    // leaves the client's existing link working. Runs on retries too, which
+    // is harmless — records already retired are skipped.
+    if (meta.status === STATUS.SENT) {
+      await supersedeOthers(meta.proposalId, token);
     }
 
     sendJson(res, 200, {

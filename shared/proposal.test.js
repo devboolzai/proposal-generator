@@ -10,6 +10,8 @@ import {
   isExpired,
   canTransition,
   assertTransition,
+  supersede,
+  isSupersededBy,
 } from "./proposal.js";
 
 describe("newToken", () => {
@@ -212,5 +214,49 @@ describe("status transitions", () => {
     expect(() => assertTransition(STATUS.SIGNED, STATUS.SENT)).toThrow(
       /signed.*sent/i,
     );
+  });
+});
+
+describe("superseding a re-sent proposal", () => {
+  const now = new Date("2026-03-01T12:00:00.000Z");
+  const oldToken = "a".repeat(32);
+  const newToken_ = "b".repeat(32);
+  const sent = {
+    token: oldToken,
+    proposalId: 50010,
+    status: STATUS.SENT,
+    expiresAt: "2026-03-20T12:00:00.000Z",
+  };
+
+  it("expires the old link at the moment of replacement", () => {
+    const retired = supersede(sent, newToken_, now);
+    expect(retired.status).toBe(STATUS.SUPERSEDED);
+    expect(retired.supersededBy).toBe(newToken_);
+    expect(retired.supersededAt).toBe(now.toISOString());
+    expect(isExpired(retired, now)).toBe(true);
+  });
+
+  it("never pushes an already-past expiry forward", () => {
+    const stale = { ...sent, expiresAt: "2026-02-01T00:00:00.000Z" };
+    expect(supersede(stale, newToken_, now).expiresAt).toBe(stale.expiresAt);
+  });
+
+  it("leaves the original record untouched", () => {
+    supersede(sent, newToken_, now);
+    expect(sent.status).toBe(STATUS.SENT);
+  });
+
+  it("refuses to supersede a signed proposal", () => {
+    expect(() => supersede({ ...sent, status: STATUS.SIGNED }, newToken_, now)).toThrow();
+  });
+
+  it("picks only earlier, replaceable records of the same number", () => {
+    expect(isSupersededBy(sent, 50010, newToken_)).toBe(true);
+    expect(isSupersededBy({ ...sent, status: STATUS.PENDING }, 50010, newToken_)).toBe(true);
+    expect(isSupersededBy(sent, 50011, newToken_)).toBe(false);
+    expect(isSupersededBy(sent, 50010, oldToken)).toBe(false);
+    expect(isSupersededBy({ ...sent, status: STATUS.SIGNED }, 50010, newToken_)).toBe(false);
+    expect(isSupersededBy({ ...sent, status: STATUS.SUPERSEDED }, 50010, newToken_)).toBe(false);
+    expect(isSupersededBy(null, 50010, newToken_)).toBe(false);
   });
 });
