@@ -5,7 +5,7 @@ import { requestProposalId } from "../share/proposalId";
 
 // ============================================================
 // PROPOSAL STATE
-//
+//*test ignore*
 // Single source of state for the whole app. Every step component
 // reads what it needs via useProposal() — no prop drilling.
 //
