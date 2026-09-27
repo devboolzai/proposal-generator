@@ -52,12 +52,34 @@ export async function readFileOrNull(pathname) {
 }
 
 /**
+ * Flush a directory's entries to disk.
+ *
+ * rename() is atomic but not, by itself, durable: the new name is an entry in
+ * the directory, and until the directory is flushed a power loss can roll the
+ * rename back. For the proposal counter that would hand out a number already
+ * printed on a client's document, so every rename is followed by this.
+ *
+ * Windows cannot open a directory for fsync, and the app never runs there in
+ * production, so it is a no-op on that platform.
+ */
+export async function syncDir(dir) {
+  if (process.platform === "win32") return;
+  const handle = await open(dir, "r");
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
  * Write via a temp file in the same directory, then rename.
  *
  * rename() is atomic within a filesystem, so a reader sees either the old
  * file or the whole new one — never the half-written middle. A crash or a
  * full disk leaves the temp file, which is removed on the way out, and the
  * real file untouched. This is what makes a truncated meta.json impossible.
+ * The directory is then flushed, so the rename itself survives a power loss.
  */
 export async function writeAtomic(pathname, data) {
   const full = resolveInRoot(pathname);
@@ -73,6 +95,7 @@ export async function writeAtomic(pathname, data) {
       await handle.close();
     }
     await rename(tmp, full);
+    await syncDir(dirname(full));
   } catch (err) {
     await rm(tmp, { force: true });
     throw err;

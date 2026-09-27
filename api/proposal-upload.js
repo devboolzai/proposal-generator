@@ -2,7 +2,7 @@ import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { STATUS, isValidToken, paths } from "../shared/proposal.js";
 import { readMeta } from "./_lib/store.js";
-import { resolveInRoot } from "../shared/fsStore.js";
+import { resolveInRoot, syncDir } from "../shared/fsStore.js";
 import { allowMethod, fail, httpError, requireAccessCode, sendJson } from "../shared/http.js";
 
 // POST /api/proposal-upload?token=…&kind=pdf|docx&offset=…[&final=1]
@@ -141,6 +141,7 @@ async function writeChunkAt(req, staging, start, limit) {
 
 async function promote(staging, final) {
   await rename(staging, final);
+  await syncDir(dirname(final));
 }
 
 async function discard(query) {
