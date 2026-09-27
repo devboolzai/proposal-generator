@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { sendJson } from "../shared/http.js";
+import { sendJson } from "./http.js";
 
 // ============================================================
 // What Vercel used to do for us.

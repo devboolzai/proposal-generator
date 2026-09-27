@@ -1,6 +1,6 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createApp, loadRoutes } from "./lib/routes.js";
+import { createApp, loadRoutes } from "./shared/routes.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 3000);
