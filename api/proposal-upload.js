@@ -1,4 +1,4 @@
-import { mkdir, open, rename, rm } from "node:fs/promises";
+import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { STATUS, isValidToken, paths } from "../shared/proposal.js";
 import { readMeta } from "./_lib/store.js";
@@ -55,6 +55,28 @@ export default async function handler(req, res) {
     const staging = resolveInRoot(`${target.pathname}.part`);
     await mkdir(dirname(staging), { recursive: true });
 
+    const staged = await sizeOf(staging);
+
+    // A final chunk whose response was lost in transit comes back after the
+    // staging file has already been promoted. Writing it again would start a
+    // fresh staging file with zeros where the earlier chunks were, and promote
+    // that over the good document — so recognise the repeat and answer the
+    // way the first attempt did.
+    if (staged === null && start > 0 && final === "1") {
+      const promoted = await sizeOf(resolveInRoot(target.pathname));
+      const length = Number(req.headers["content-length"]);
+      if (promoted !== null && promoted === start + length) {
+        sendJson(res, 200, { pathname: target.pathname, size: promoted });
+        return;
+      }
+    }
+
+    // Chunks arrive in order, so a chunk may start where the staged bytes end,
+    // or earlier when it is a retry. Anything further would leave a hole.
+    if (start > (staged ?? 0)) {
+      throw httpError(409, "ההעלאה נקטעה — יש לנסות לשלוח שוב");
+    }
+
     const written = await writeChunkAt(req, staging, start, limit);
 
     if (final === "1") {
@@ -68,7 +90,7 @@ export default async function handler(req, res) {
     // A rejected upload must not leave staging bytes that a later, smaller
     // upload would inherit.
     if (err?.status === 413) await discard(req.query);
-    fail(res, err, 400);
+    fail(res, err);
   }
 }
 
@@ -127,5 +149,15 @@ async function discard(query) {
     await rm(resolveInRoot(`${target.pathname}.part`), { force: true });
   } catch {
     // Nothing to clean up, or a path we would refuse anyway.
+  }
+}
+
+/** Size in bytes of the file at an absolute store path, or null when it is not there. */
+async function sizeOf(full) {
+  try {
+    return (await stat(full)).size;
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
   }
 }

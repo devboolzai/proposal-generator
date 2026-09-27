@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { mkdtemp, rm, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../lib/routes.js";
@@ -112,5 +112,32 @@ describe("proposal-upload", () => {
     const big = Buffer.alloc(11 * 1024 * 1024);
     const res = await send({ token: TOKEN, kind: "docx", offset: "0" }, big);
     expect(res.status).toBe(413);
+  });
+
+  it("answers a retried final chunk without touching the promoted file", async () => {
+    await seedPending();
+    await send({ token: TOKEN, kind: "pdf", offset: "0" }, "hello ");
+    await send({ token: TOKEN, kind: "pdf", offset: "6", final: "1" }, "world");
+    const res = await send({ token: TOKEN, kind: "pdf", offset: "6", final: "1" }, "world");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ pathname: `proposals/${TOKEN}/original.pdf`, size: 11 });
+    const file = await readFile(join(dir, "proposals", TOKEN, "original.pdf"));
+    expect(file.toString()).toBe("hello world");
+  });
+
+  it("refuses a chunk that would leave a gap", async () => {
+    await seedPending();
+    const res = await send({ token: TOKEN, kind: "pdf", offset: "6" }, "world");
+    expect(res.status).toBe(409);
+  });
+
+  it("answers 500, and logs, when the record cannot be read", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await mkdir(join(dir, "proposals", TOKEN), { recursive: true });
+    await writeFile(join(dir, "proposals", TOKEN, "meta.json"), "{ not json");
+    const res = await send({ token: TOKEN, kind: "pdf", offset: "0" }, "x");
+    expect(res.status).toBe(500);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
