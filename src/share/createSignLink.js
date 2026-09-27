@@ -1,4 +1,4 @@
-import { upload } from "@vercel/blob/client";
+import { uploadChunked } from "./uploadChunked";
 import { buildFileName, generatePdf } from "../exportPdf";
 import { generateDocx } from "../exportDocx";
 import { ApiError, postJson } from "./api";
@@ -6,11 +6,10 @@ import { ApiError, postJson } from "./api";
 // ============================================================
 // Turning the on-screen proposal into a signing link.
 //
-// Three server calls rather than one, because the PDF cannot go
-// through a function: it is a page-per-JPEG raster and would
-// blow the 4.5MB body limit. So the browser mints a record,
-// uploads the bytes straight to Blob, and then tells the server
-// the upload landed.
+// Three server calls: the browser mints a record, uploads the
+// bytes in 5MB chunks to /api/proposal-upload (each chunk retried
+// on its own, so a flaky connection does not restart the whole
+// upload), then tells the server the upload landed.
 //
 // The modal owns the UI; this owns the sequence.
 // ============================================================
@@ -22,13 +21,6 @@ export const EXPIRY_OPTIONS = [
 ];
 
 export const DEFAULT_EXPIRY_DAYS = 30;
-
-// Mirrors DOCX_CONTENT_TYPE in shared/proposal.js, which cannot be imported
-// here: that module pulls in node:crypto and so never enters a browser bundle.
-// blob-upload.js checks the value against its own copy, so a drift fails loudly
-// at upload time rather than quietly storing the wrong type.
-const DOCX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 /**
  * @param {object} args
@@ -80,7 +72,7 @@ export async function createSignLink({
   }
 
   onProgress("יוצר קישור…");
-  const { token, pathname, docxPathname } = await postJson(
+  const { token } = await postJson(
     "/api/proposal-create",
     {
       proposalId,
@@ -96,14 +88,12 @@ export async function createSignLink({
 
   onProgress("מעלה את ההצעה…");
   try {
-    await upload(pathname, blob, {
-      access: "private",
-      contentType: "application/pdf",
-      handleUploadUrl: "/api/blob-upload",
-      headers: { "x-app-code": accessCode },
-      // Splits large rasters into parallel parts and retries the ones that fail,
-      // which matters on the phone tethering a salesperson tends to be on.
-      multipart: true,
+    await uploadChunked({
+      blob,
+      token,
+      kind: "pdf",
+      accessCode,
+      onProgress: (pct) => onProgress(`מעלה את ההצעה… ${pct}%`),
     });
   } catch (err) {
     throw new ApiError(err?.message || "העלאת הקובץ נכשלה", 0);
@@ -114,13 +104,13 @@ export async function createSignLink({
   // a manually supplied PDF still gets one — the two simply won't match, which
   // is the accepted cost of overriding the generated document.
   //
-  // Has to happen before proposal-ready: blob-upload refuses to write to a
+  // Has to happen before proposal-ready: proposal-upload refuses to write to a
   // record that has left `pending`.
   //
   // Never fatal. The client's document and their link are already in place;
   // losing the archive copy is not worth failing a send the salesperson is
   // watching. The archive shows DOC as unavailable for that proposal instead.
-  if (sections && docxPathname) {
+  if (sections) {
     onProgress("מעלה עותק Word…");
     try {
       const { blob: docxBlob } = await generateDocx(
@@ -130,12 +120,7 @@ export async function createSignLink({
         proposalId,
         { returnBlob: true },
       );
-      await upload(docxPathname, docxBlob, {
-        access: "private",
-        contentType: DOCX_CONTENT_TYPE,
-        handleUploadUrl: "/api/blob-upload",
-        headers: { "x-app-code": accessCode },
-      });
+      await uploadChunked({ blob: docxBlob, token, kind: "docx", accessCode });
     } catch (err) {
       console.error("docx archive upload failed", err);
     }
