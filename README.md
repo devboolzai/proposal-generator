@@ -11,23 +11,23 @@ npm run dev
 
 האפליקציה תרוץ על `http://localhost:5173`
 
-## העלאה ל-Vercel
+להרצה מלאה מול ה-API (כולל ייצוא PDF/Word), ראו [פיתוח מקומי](#פיתוח-מקומי) למטה.
 
-### אפשרות 1: מ-GitHub (מומלץ)
-1. העלה את הפרויקט ל-GitHub repo
-2. היכנס ל-[vercel.com](https://vercel.com) והתחבר עם GitHub
-3. לחץ "Import Project" ובחר את ה-repo
-4. Vercel יזהה אוטומטית שזה Vite — פשוט לחץ Deploy
+## העלאה לשרת
 
-### אפשרות 2: מ-CLI
+שתי האפליקציות רצות על VPS אחד מאחורי nginx, כ-`proposal-gen` (`:3000`)
+ו-`proposal-sign` (`:3001`) — ראו את הפירוט בטבלה למטה.
+
+הפריסה עצמה היא סקריפט אחד:
+
 ```bash
-npm i -g vercel
-vercel
+./scripts/deploy.sh [gen|sign|both]
 ```
 
-### אפשרות 3: Netlify
-1. הרץ `npm run build`
-2. גרור את תיקיית `dist/` לתוך [app.netlify.com/drop](https://app.netlify.com/drop)
+הוא בונה מקומית, מעביר את התוצר לדרופלט, מתקין שם רק תלויות production, מזיז
+את הסימלינק `current` לגרסה החדשה ומפעיל מחדש את ה-service המתאים. הוא שומר
+את 3 הגרסאות האחרונות, כך שרולבק הוא רק החזרת הסימלינק לגרסה הקודמת ואתחול
+מחדש של ה-service — בלי build מחדש.
 
 ## חתימה דיגיטלית של לקוחות
 
@@ -35,19 +35,19 @@ vercel
 "🔗 שליחה לחתימה": הוא מייצר PDF, יוצר קישור אישי ושולח אותו במייל ללקוח.
 הלקוח קורא את ההצעה, חותם בציור על המסך, ומקבל — יחד עם Boolzai — עותק חתום במייל.
 
-### שני פרויקטים ב-Vercel
+### שתי אפליקציות על שרת אחד
 
-הריפו הזה מכיל **שני** פרויקטים נפרדים ב-Vercel, כדי שלקוח לעולם לא יקבל כתובת
-שמגישה את קוד המחולל:
+הריפו הזה מכיל **שתי** אפליקציות נפרדות, כדי שלקוח לעולם לא יקבל כתובת שמגישה
+את קוד המחולל:
 
-| פרויקט | Root Directory | דומיין | קהל |
+| פרויקט | service | דומיין | קהל |
 |---|---|---|---|
-| `proposal-generator` | `.` | הדומיין הקיים | פנימי |
-| `proposal-sign` | `sign` | `sign.boolzai.co.il` | לקוחות |
+| `proposal-generator` | `proposal-gen` | `quote.boolzai.co.il` | פנימי |
+| `proposal-sign` | `proposal-sign` | `sign.boolzai.co.il` | לקוחות |
 
-שניהם חייבים להיות מחוברים **לאותו Blob Store** — זה מה שמחבר ביניהם. אין DB:
-כל הצעה היא תיקייה אחת ב-Blob (`proposals/<token>/`) עם `meta.json`,
-`original.pdf` ו-`signed.pdf`.
+מה שמחבר ביניהן זו תיקיית `/var/lib/proposals` (`PROPOSALS_DIR`) המשותפת
+לשתיהן. אין DB: כל הצעה היא תיקייה אחת, `proposals/<token>/`, עם `meta.json`,
+`original.pdf`, `signed.pdf` ו-`proposal.docx`.
 
 ### מספר הצעה
 
@@ -65,35 +65,51 @@ vercel
 יקבלו שני מספרים שונים.
 
 הקוד המשותף יושב ב-[shared/](shared/) והוא נטול תלויות npm בכוונה — רק
-`node:` builtins — כי `sign/` נבנה עם Root Directory משלו ולא רואה את ה-node_modules
-שמעליו. קריאות ה-Blob עצמן חיות ב-`api/_lib/store.js` של כל פרויקט בנפרד.
+`node:` builtins — כי כל אפליקציה נפרסת מהתיקייה שלה עם ה-node_modules שלה,
+ולא רואה את זו של האחרת. הפרימיטיבים של מערכת הקבצים חיים ב-`shared/fsStore.js`,
+ה-HTTP adapter ב-`shared/routes.js`, וה-`api/_lib/store.js` של כל אפליקציה הוא
+ה-store הדק שלה מעליהם.
 
 ### הקמה ראשונית
 
-1. ליצור Blob Store ולחבר אותו לשני הפרויקטים.
-2. לאמת את הדומיין `boolzai.co.il` ב-[Resend](https://resend.com) (רשומות SPF/DKIM).
-3. להוסיף CNAME עבור `sign` אל הפרויקט השני.
-4. להגדיר משתני סביבה — ראו [.env.example](.env.example) ו-[sign/.env.example](sign/.env.example).
-5. לנעול את המחולל: Deployment Protection ב-Vercel, או לכל הפחות `APP_ACCESS_CODE`
-   שכבר נדרש בכל endpoint שכותב.
+1. להריץ את `deploy/bootstrap.sh` על הדרופלט.
+2. ליצור Cloudflare Origin certificate, להתקין אותו על הדרופלט, ולהגדיר SSL
+   ל-Full (strict).
+3. לכתוב את קובצי הסביבה `/etc/proposal-generator.env` ו-`/etc/proposal-sign.env`.
+4. לאמת את הדומיין `boolzai.co.il` ב-[Resend](https://resend.com) (רשומות
+   SPF/DKIM הקיימות).
+5. להריץ `scripts/deploy.sh`.
+6. להצביע את רשומות ה-DNS של `quote` ו-`sign` אל הדרופלט, עם Cloudflare proxy
+   דלוק.
+
+נעילת המחולל היא כיום כלל Cloudflare קיים על `quote`, יחד עם `APP_ACCESS_CODE`
+שכבר נדרש בכל endpoint שכותב.
 
 ### פיתוח מקומי
 
-`npm run dev` מריץ רק את הקליינט — הוא לא מריץ את `api/`, ולכן **גם ההורדות
-כ-PDF/Word חסומות שם**: אי אפשר להקצות מספר להצעה בלי השרת. לזרימה המלאה צריך
-שני מופעים של `vercel dev`:
+כל אפליקציה רצה בשני מסופים — השרת האמיתי מצד אחד, ו-Vite עם proxy מצידו השני.
+ה-API אמיתי לגמרי, כך שגם ייצוא PDF ו-Word עובדים מקומית בדיוק כמו בפרודקשן.
 
 ```bash
-npm i -g vercel
+# מסוף 1 — API של המחולל (מאזין על :3000)
+node --env-file=.env.local server.js
 
-# מסוף 1 — המחולל
-vercel link && vercel env pull .env.local && vercel dev
-
-# מסוף 2 — דף החתימה
-cd sign && vercel link && vercel env pull .env.local && vercel dev --listen 3001
+# מסוף 2 — קליינט המחולל (Vite על :5173, מעביר /api ל-:3000)
+npm run dev
 ```
 
-ולהגדיר `SIGN_BASE_URL=http://localhost:3001` ב-`.env.local` שבשורש.
+```bash
+# מסוף 3 — API של דף החתימה (מאזין על :3001)
+cd sign && node --env-file=.env.local server.js
+
+# מסוף 4 — קליינט דף החתימה (Vite על :5174, מעביר /api ל-:3001)
+cd sign && npm run dev
+```
+
+צרו את `.env.local` שבשורש מתוך [.env.example](.env.example), ואת
+`sign/.env.local` מתוך [sign/.env.example](sign/.env.example). בשני הקבצים
+הוסיפו `PROPOSALS_DIR` שמצביע לאותה תיקיית scratch, והתעלמו מ-`BLOB_READ_WRITE_TOKEN`
+— הוא כבר לא בשימוש. בקובץ שבשורש הגדירו גם `SIGN_BASE_URL=http://localhost:5174`.
 
 ### בדיקות
 
@@ -101,7 +117,8 @@ cd sign && vercel link && vercel env pull .env.local && vercel dev --listen 3001
 npm test
 ```
 
-מכסה את מודל הנתונים המשותף ואת הוספת עמוד החתימה ל-PDF.
+מכסה את מודל הנתונים המשותף, הוספת עמוד החתימה ל-PDF, ה-file store, הקצאת
+מספרי ההצעות, ה-HTTP adapter וההעלאה המקוטעת (chunked upload).
 
 ## מבנה הפרויקט
 
@@ -110,13 +127,17 @@ proposal-app/
 ├── index.html
 ├── vite.config.js
 ├── package.json
+├── server.js               # שרת ה-API (Node http, ללא Vercel)
 ├── shared/                 # מודל הנתונים המשותף לשני הפרויקטים (ללא תלויות)
 │   ├── proposal.js         #   נתיבים, סטטוסים, תוקף, מונה המספרים, מבנה meta.json
 │   ├── http.js             #   עזרי בקשה/תשובה
+│   ├── fsStore.js          #   הפרימיטיבים של מערכת הקבצים
+│   ├── routes.js           #   ה-HTTP adapter המשותף לשתי האפליקציות
 │   └── emailTemplate.js    #   מעטפת המייל הממותגת
 ├── api/                    # פונקציות צד-המוכר (יצירת קישור ושליחתו)
 │   └── proposal-id.js      #   הקצאת מספר ההצעה הבא
-├── sign/                   # פרויקט Vercel נפרד — דף החתימה של הלקוח
+├── sign/                   # אפליקציה נפרדת — דף החתימה של הלקוח
+│   ├── server.js           #   שרת ה-API שלה, על פורט 3001
 │   ├── src/                #   SignPage, SignaturePad, SignatureBlock
 │   └── api/                #   proposal-get / proposal-pdf / proposal-sign
 └── src/
