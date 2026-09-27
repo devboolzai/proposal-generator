@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { paths } from "../../../shared/proposal.js";
-import { readFileOrNull, resolveInRoot, writeAtomic } from "./fsStore.js";
+import { readFileOrNull, resolveInRoot, writeAtomic } from "../../../shared/fsStore.js";
 
 // ============================================================
 // Store I/O for this project.
