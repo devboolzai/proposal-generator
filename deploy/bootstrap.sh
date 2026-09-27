@@ -15,7 +15,7 @@ if ! swapon --show | grep -q swapfile; then
   chmod 600 /swapfile
   mkswap /swapfile
   swapon /swapfile
-  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 sysctl -w vm.swappiness=10
 grep -q '^vm.swappiness' /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
@@ -50,13 +50,34 @@ chown -R proposal-gen:proposals /srv/proposal-generator
 chown -R proposal-sign:proposals /srv/proposal-sign
 
 echo "==> firewall"
-ufw --force reset >/dev/null
+# Fetch and check Cloudflare's ranges before touching ufw. A failed curl in an
+# assignment stops the script under `set -e`; the same curl inside a `for`
+# list would not, and would quietly leave 80/443 with no rules at all.
+CF_V4=$(curl -fsSL "$CF_IPS_V4")
+CF_V6=$(curl -fsSL "$CF_IPS_V6")
+V4_RE='^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{2}$'
+V6_RE='^[0-9a-fA-F:]+/[0-9]{2,3}$'
+for ip in $CF_V4; do
+  [[ $ip =~ $V4_RE ]] || { echo "unexpected Cloudflare IPv4 range: $ip" >&2; exit 1; }
+done
+for ip in $CF_V6; do
+  [[ $ip =~ $V6_RE ]] || { echo "unexpected Cloudflare IPv6 range: $ip" >&2; exit 1; }
+done
+if (( $(wc -w <<<"$CF_V4") < 10 || $(wc -w <<<"$CF_V6") < 5 )); then
+  echo "Cloudflare range lists look truncated — refusing to change the firewall" >&2
+  exit 1
+fi
+
+# No `ufw reset`: on a re-run it would drop the live firewall — and the
+# Cloudflare-only rule with it — for as long as the rebuild takes, or for good
+# if a step failed. ufw skips a rule it already has, so re-adding is safe, and
+# a failure part-way leaves the previous rules in force.
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment 'ssh'
 # 80/443 only from Cloudflare. The origin must not be reachable directly, or
 # the edge protection on quote.boolzai.co.il means nothing.
-for ip in $(curl -fsSL "$CF_IPS_V4") $(curl -fsSL "$CF_IPS_V6"); do
+for ip in $CF_V4 $CF_V6; do
   ufw allow from "$ip" to any port 80,443 proto tcp comment 'cloudflare'
 done
 ufw --force enable
