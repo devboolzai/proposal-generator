@@ -1,47 +1,51 @@
-import { get, head, put } from "@vercel/blob";
-import { META_PUT_OPTIONS, PDF_PUT_OPTIONS, PRIVATE, paths } from "../../../shared/proposal.js";
+import { stat } from "node:fs/promises";
+import { paths } from "../../../shared/proposal.js";
+import { readFileOrNull, resolveInRoot, writeAtomic } from "./fsStore.js";
 
 // ============================================================
-// Blob I/O for this project.
+// Store I/O for this project.
 //
 // The shape of the data — paths, statuses, expiry — is defined
 // once in shared/proposal.js. This file is only the wire: it
-// exists per-project rather than in shared/ so that
-// `@vercel/blob` resolves from the project's own node_modules,
-// which is what lets the signing app deploy with its Root
-// Directory set to sign/.
+// exists per-project so this app can deploy from sign/ without
+// reaching above its own root.
 //
-// Its twin is api/_lib/store.js at the repo root. Keep them in step.
+// Its twin is api/_lib/store.js at the repo root. Keep them in
+// step. This side is a subset: the signing app never lists the
+// store and never touches the counter.
 // ============================================================
 
 /** The record, or null when the token names nothing. */
 export async function readMeta(token) {
-  const result = await get(paths(token).meta, { ...PRIVATE, useCache: false });
-  if (!result || result.statusCode !== 200) return null;
-  return JSON.parse(await new Response(result.stream).text());
+  const raw = await readFileOrNull(paths(token).meta);
+  if (raw === null) return null;
+  return JSON.parse(raw.toString("utf8"));
 }
 
 export async function writeMeta(token, meta) {
-  await put(paths(token).meta, JSON.stringify(meta, null, 2), META_PUT_OPTIONS);
+  await writeAtomic(paths(token).meta, JSON.stringify(meta, null, 2));
   return meta;
 }
 
-/** Raw bytes of a blob, or null when it is not there. */
+/** Raw bytes of a stored file, or null when it is not there. */
 export async function readBytes(pathname) {
-  const result = await get(pathname, PRIVATE);
-  if (!result || result.statusCode !== 200) return null;
-  return new Uint8Array(await new Response(result.stream).arrayBuffer());
+  const buf = await readFileOrNull(pathname);
+  return buf === null ? null : new Uint8Array(buf);
 }
 
 export async function writePdf(pathname, bytes) {
-  return put(pathname, bytes, PDF_PUT_OPTIONS);
+  await writeAtomic(pathname, Buffer.from(bytes));
+  return { pathname };
 }
 
-export async function blobExists(pathname) {
+export async function fileExists(pathname) {
   try {
-    await head(pathname, PRIVATE);
+    await stat(resolveInRoot(pathname));
     return true;
   } catch {
     return false;
   }
 }
+
+/** Kept under its old name so callers written against Blob do not change. */
+export const blobExists = fileExists;

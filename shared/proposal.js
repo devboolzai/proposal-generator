@@ -286,51 +286,11 @@ export function assertTransition(from, to) {
   }
 }
 
-// ---------- Blob options ----------
+// ---------- content types ----------
 
 /**
- * Every blob this system writes is private and named exactly by its path —
- * the store.js in each project spreads this into its put/get calls so the two
- * cannot end up writing with different visibility.
- */
-export const PRIVATE = { access: "private" };
-
-export const META_PUT_OPTIONS = {
-  ...PRIVATE,
-  addRandomSuffix: false,
-  allowOverwrite: true,
-  contentType: "application/json",
-  // meta.json changes on every transition; a cached copy would let a
-  // proposal be signed twice.
-  cacheControlMaxAge: 0,
-};
-
-export const PDF_PUT_OPTIONS = {
-  ...PRIVATE,
-  addRandomSuffix: false,
-  allowOverwrite: true,
-  contentType: "application/pdf",
-};
-
-/**
- * The Word original is uploaded alongside the PDF, so that the archive can
- * hand back an editable document and not only a raster.
+ * The Word original is stored alongside the PDF, so that the archive can hand
+ * back an editable document and not only a raster.
  */
 export const DOCX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-export const DOCX_PUT_OPTIONS = {
-  ...PRIVATE,
-  addRandomSuffix: false,
-  allowOverwrite: true,
-  contentType: DOCX_CONTENT_TYPE,
-};
-
-export const COUNTER_PUT_OPTIONS = {
-  ...PRIVATE,
-  addRandomSuffix: false,
-  allowOverwrite: true,
-  contentType: "application/json",
-  // A cached counter would hand the same number to the next proposal.
-  cacheControlMaxAge: 0,
-};
