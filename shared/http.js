@@ -59,8 +59,9 @@ function safeEqual(a, b) {
 }
 
 /**
- * Vercel parses JSON bodies for us, but only when the client set the header.
- * This normalises both cases so routes never see a string.
+ * Routes never see a raw string. The HTTP adapter parses JSON bodies onto
+ * req.body before a handler runs; this keeps the older string case working so
+ * a handler called directly from a test can pass either shape.
  */
 export function readBody(req) {
   if (typeof req.body === "string") {
