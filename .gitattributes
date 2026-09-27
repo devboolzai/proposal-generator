@@ -1,0 +1,4 @@
+# Shell scripts and server config run on Linux. This repo is edited on
+# Windows with core.autocrlf=true, and a CRLF script breaks bash.
+*.sh text eol=lf
+deploy/** text eol=lf
