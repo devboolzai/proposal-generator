@@ -41,3 +41,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# TLS keys and certificates live on the server only, never in the repo.
+*.key
+*.pem
