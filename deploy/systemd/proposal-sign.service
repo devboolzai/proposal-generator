@@ -1,0 +1,43 @@
+[Unit]
+Description=Boolzai proposal signing page (client-facing)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=proposal-sign
+Group=proposals
+# A signing-app release mirrors the repo (<release>/sign next to
+# <release>/shared), so its ../shared imports resolve inside the release.
+WorkingDirectory=/srv/proposal-sign/current/sign
+ExecStart=/usr/bin/node server.js
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=PROPOSALS_DIR=/var/lib/proposals
+EnvironmentFile=/etc/proposal-sign.env
+Restart=always
+RestartSec=2
+
+# New files must stay group-writable so the generator can read them.
+UMask=0007
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/proposals
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+# Throttle rather than kill: a spike while pdf-lib works on a 30MB raster
+# should slow down, not drop a client's signature.
+MemoryHigh=400M
+MemoryMax=600M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proposal-sign
+
+[Install]
+WantedBy=multi-user.target
