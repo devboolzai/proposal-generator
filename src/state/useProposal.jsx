@@ -248,7 +248,7 @@ export function ProposalProvider({ children }) {
       } else if (key === "newsletter") {
         sections.push({
           type: "newsletter",
-          title: "ניוזלטר",
+          title: "הפצת ניוזלטר",
           setupTitle: "הקמה והיערכות ראשונית כוללות:",
           setupItems: template.setupItems.filter(
             (_, i) => !isItemExcluded(key, "setup", i)
