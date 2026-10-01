@@ -329,6 +329,68 @@ export default function Step2Services() {
           );
         }
 
+        if (
+          key === "newsletter"
+        ) {
+          return (
+            <div key={key} style={styles.card}>
+              <div style={styles.cardTitle}>🚀 {template.label}</div>
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>הקמה והיערכות ראשונית כוללות</label>
+                {template.setupItems.map((item, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      ...styles.noteRow,
+                      opacity: isItemExcluded(key, "setup", i) ? 0.4 : 1,
+                      textDecoration: isItemExcluded(key, "setup", i)
+                        ? "line-through"
+                        : "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => toggleServiceItem(key, "setup", i)}
+                  >
+                    <span
+                      style={styles.checkbox(
+                        !isItemExcluded(key, "setup", i)
+                      )}
+                    >
+                      {!isItemExcluded(key, "setup", i) ? "✓" : ""}
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={styles.fieldGroup}>
+                <label style={styles.label}>השירות החודשי כולל</label>
+                {template.managementItems.map((item, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      ...styles.noteRow,
+                      opacity: isItemExcluded(key, "management", i) ? 0.4 : 1,
+                      textDecoration: isItemExcluded(key, "management", i)
+                        ? "line-through"
+                        : "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => toggleServiceItem(key, "management", i)}
+                  >
+                    <span
+                      style={styles.checkbox(
+                        !isItemExcluded(key, "management", i)
+                      )}
+                    >
+                      {!isItemExcluded(key, "management", i) ? "✓" : ""}
+                    </span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div key={key} style={styles.card}>
             <div style={styles.cardTitle}>📦 {template.label}</div>

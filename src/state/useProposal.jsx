@@ -245,6 +245,18 @@ export function ProposalProvider({ children }) {
           description: config.customDescription || "",
           items: (config.customItems || "").split("\n").filter(Boolean),
         });
+      } else if (key === "newsletter") {
+        sections.push({
+          type: "newsletter",
+          title: "ניוזלטר",
+          setupTitle: "הקמה והיערכות ראשונית כוללות:",
+          setupItems: template.setupItems.filter(
+            (_, i) => !isItemExcluded(key, "setup", i)
+          ),
+          managementItems: template.managementItems.filter(
+            (_, i) => !isItemExcluded(key, "management", i)
+          ),
+        });
       } else {
         sections.push({
           type: "generic",

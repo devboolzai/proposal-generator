@@ -265,6 +265,27 @@ export async function generateDocx(
       );
     }
 
+    if (section.type === "newsletter") {
+      docChildren.push(
+        rtlParagraph(
+          [rtlRun(section.setupTitle, { size: 22, bold: true })],
+          { spacing: { after: 100 } }
+        )
+      );
+      section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
+      docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
+
+      docChildren.push(
+        rtlParagraph(
+          [rtlRun("השירות החודשי כולל:", { size: 22, bold: true })],
+          { spacing: { before: 160, after: 100 } }
+        )
+      );
+      section.managementItems.forEach((item) =>
+        docChildren.push(bulletItem(item))
+      );
+    }
+
     if (section.type === "linkedin_network") {
       docChildren.push(
         rtlParagraph(

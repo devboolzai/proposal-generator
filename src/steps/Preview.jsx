@@ -354,6 +354,24 @@ export default function Preview() {
               section.items.length > 0 && (
                 <BulletList items={section.items} gap={8} />
               )}
+
+            {section.type === "newsletter" && (
+              <>
+                <div
+                  style={styles.previewLead}
+                >
+                  {section.setupTitle}
+                </div>
+                <BulletList items={section.setupItems} gap={16} />
+                <div
+                  style={styles.previewLead}
+                >
+                 השירות החודשי כולל:
+                </div>
+                <BulletList items={section.managementItems} gap={8} />
+              </>
+            )}
+
           </div>
         ))}
 
