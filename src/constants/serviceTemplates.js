@@ -125,7 +125,7 @@ export const SERVICE_TEMPLATES = {
       "שיחה חודשית עם הלקוח",
     ],
   },
-    campaigns_chagpt: {
+  campaigns_chatgpt: {
     label: "קמפיינים ב-ChatGPT",
     labelEn: "ChatGPT Campaigns",
     setupItems: [

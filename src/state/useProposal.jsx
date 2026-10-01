@@ -205,7 +205,7 @@ export function ProposalProvider({ children }) {
             }),
           });
         }
-      } else if (key === "campaigns_meta" || key === "campaigns_google" || key === "campaigns_tiktok") {
+      } else if (key === "campaigns_meta" || key === "campaigns_google" || key === "campaigns_tiktok" || key === "campaigns_chatgpt") {
         sections.push({
           type: "campaigns",
           title:
@@ -213,7 +213,9 @@ export function ProposalProvider({ children }) {
               ? "קמפיינים ממומנים במטא (פייסבוק ואינסטגרם)"
               : key === "campaigns_google"
                 ? "קמפיינים ממומנים בגוגל"
-                : "קמפיינים ממומנים בטיקטוק",
+                : key === "campaigns_tiktok"
+                  ? "קמפיינים ממומנים בטיקטוק"
+                  : "קמפיינים ממומנים ב-ChatGPT",
           setupTitle:
             key === "campaigns_meta"
               ? "הקמת הקמפיינים כוללת:"

@@ -124,7 +124,8 @@ export default function Step2Services() {
         if (
           key === "campaigns_meta" ||
           key === "campaigns_google" ||
-          key === "campaigns_tiktok"
+          key === "campaigns_tiktok" ||
+          key === "campaigns_chatgpt"
         ) {
           return (
             <div key={key} style={styles.card}>
