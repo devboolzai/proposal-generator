@@ -195,8 +195,10 @@ export async function generateDocx(
   }
 
   // ── Service Sections ──
+  // Same shape and order as the section loop in Preview.jsx. Keep the two
+  // in step.
   sections.forEach((section) => {
-    docChildren.push(heading(section.title, 2));
+    if (section.title) docChildren.push(heading(section.title, 2));
 
     if (section.description) {
       docChildren.push(
@@ -206,119 +208,19 @@ export async function generateDocx(
       );
     }
 
-    if (section.type === "social") {
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun("הקמת עמודים או תחילת פעילות:", { size: 22, bold: true })],
-          { spacing: { after: 100 } }
-        )
-      );
-      section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
-      docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
-
-      // Grouped exactly as SocialSection does it in Preview.jsx — Facebook,
-      // Instagram and LinkedIn describe the same work and collapse into one
-      // block, TikTok keeps its own. Keep the two in step.
-      const platforms = section.managementSections || [];
-      const general = [
-        ...new Set(
-          platforms
-            .filter((ms) => ms.platform !== "TikTok")
-            .flatMap((ms) => ms.items)
-        ),
-      ];
-      const tiktok = platforms.find((ms) => ms.platform === "TikTok");
-
-      const managementBlock = (title, items) => {
+    section.groups.forEach((group, gIdx) => {
+      if (group.heading) {
         docChildren.push(
-          rtlParagraph([rtlRun(title, { size: 22, bold: true })], {
-            spacing: { before: 160, after: 100 },
+          rtlParagraph([rtlRun(group.heading, { size: 22, bold: true })], {
+            spacing: gIdx > 0 ? { before: 160, after: 100 } : { after: 100 },
           })
         );
-        items.forEach((item) => docChildren.push(bulletItem(item)));
-      };
-
-      if (general.length > 0) managementBlock("ניהול עמוד עסקי כולל:", general);
-      if (tiktok?.items?.length > 0) {
-        managementBlock("ניהול עמוד TikTok עסקי:", tiktok.items);
       }
-    }
-
-    if (section.type === "campaigns") {
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun(section.setupTitle, { size: 22, bold: true })],
-          { spacing: { after: 100 } }
-        )
-      );
-      section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
-      docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
-
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun("ניהול הקמפיינים כולל:", { size: 22, bold: true })],
-          { spacing: { before: 160, after: 100 } }
-        )
-      );
-      section.managementItems.forEach((item) =>
-        docChildren.push(bulletItem(item))
-      );
-    }
-
-    if (section.type === "newsletter") {
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun(section.setupTitle, { size: 22, bold: true })],
-          { spacing: { after: 100 } }
-        )
-      );
-      section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
-      docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
-
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun("השירות החודשי כולל:", { size: 22, bold: true })],
-          { spacing: { before: 160, after: 100 } }
-        )
-      );
-      section.managementItems.forEach((item) =>
-        docChildren.push(bulletItem(item))
-      );
-    }
-
-    if (section.type === "linkedin_network") {
-      docChildren.push(
-        rtlParagraph(
-          [rtlRun("השירות כולל:", { size: 22, bold: true })],
-          { spacing: { after: 100 } }
-        )
-      );
-      section.setupItems.forEach((item) => docChildren.push(bulletItem(item)));
-
-      if (section.softwareCosts) {
-        docChildren.push(
-          rtlParagraph(
-            [
-              rtlRun(
-                "עלויות תוכנה (תשלום ישיר לספקים – מנוי חודשי):",
-                { size: 22, bold: true }
-              ),
-            ],
-            { spacing: { before: 200, after: 100 } }
-          )
-        );
-        section.softwareCosts.forEach((sc) =>
-          docChildren.push(bulletItem(`${sc.name} – ${sc.cost}`))
-        );
+      group.items.forEach((item) => docChildren.push(bulletItem(item)));
+      if (gIdx < section.groups.length - 1) {
+        docChildren.push(rtlParagraph([], { spacing: { after: 100 } }));
       }
-    }
-
-    if (
-      (section.type === "generic" || section.type === "custom") &&
-      section.items?.length > 0
-    ) {
-      section.items.forEach((item) => docChildren.push(bulletItem(item)));
-    }
+    });
 
     docChildren.push(rtlParagraph([], { spacing: { after: 200 } }));
   });

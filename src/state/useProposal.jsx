@@ -1,7 +1,13 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
-import { SERVICE_TEMPLATES } from "../constants/serviceTemplates";
 import { PAYMENT_TERMS_OPTIONS, DEFAULT_NOTES } from "../constants/proposalDefaults";
 import { requestProposalId } from "../share/proposalId";
+import {
+  buildDocumentSections,
+  createBlankSection,
+  createGroup,
+  createItem,
+  createSection,
+} from "./sections";
 
 // ============================================================
 // PROPOSAL STATE
@@ -29,13 +35,12 @@ export function ProposalProvider({ children }) {
     totalAmount: "",
     paymentTerms: PAYMENT_TERMS_OPTIONS[0],
     notes: DEFAULT_NOTES.map((n) => ({ ...n })),
-    customNotes: [],
     includeAppendix: true,
     includeSignature: true,
   });
 
-  const [selectedServiceTypes, setSelectedServiceTypes] = useState([]);
-  const [serviceConfigs, setServiceConfigs] = useState({});
+  // The services, in document order — see state/sections.js for the shape.
+  const [sections, setSections] = useState([]);
   const [previewMode, setPreviewMode] = useState(false);
 
   // ── The proposal number ──
@@ -94,6 +99,28 @@ export function ProposalProvider({ children }) {
     });
   };
 
+  const addNote = () => {
+    setProposalData((prev) => ({
+      ...prev,
+      notes: [...prev.notes, { text: "", checked: true }],
+    }));
+  };
+
+  const updateNote = (idx, text) => {
+    setProposalData((prev) => {
+      const notes = [...prev.notes];
+      notes[idx] = { ...notes[idx], text };
+      return { ...prev, notes };
+    });
+  };
+
+  const removeNote = (idx) => {
+    setProposalData((prev) => ({
+      ...prev,
+      notes: prev.notes.filter((_, i) => i !== idx),
+    }));
+  };
+
   const addPricingRow = () => {
     setProposalData((prev) => ({
       ...prev,
@@ -119,163 +146,85 @@ export function ProposalProvider({ children }) {
     }));
   };
 
-  const toggleServiceType = (key) => {
-    setSelectedServiceTypes((prev) => {
-      if (prev.includes(key)) return prev.filter((k) => k !== key);
-      return [...prev, key];
-    });
+  // ── Services (Step 2) ──
+  const mapSection = (sectionId, fn) => {
+    setSections((prev) => prev.map((s) => (s.id === sectionId ? fn(s) : s)));
   };
 
-  const updateServiceConfig = (serviceKey, field, value) => {
-    setServiceConfigs((prev) => ({
-      ...prev,
-      [serviceKey]: { ...(prev[serviceKey] || {}), [field]: value },
+  const mapGroup = (sectionId, groupId, fn) => {
+    mapSection(sectionId, (s) => ({
+      ...s,
+      groups: s.groups.map((g) => (g.id === groupId ? fn(g) : g)),
     }));
   };
 
-  const toggleServiceItem = (serviceKey, section, idx) => {
-    setServiceConfigs((prev) => {
-      const config = prev[serviceKey] || {};
-      const excluded = config.excludedItems || {};
-      const sectionExcluded = excluded[section] || [];
-      const newSectionExcluded = sectionExcluded.includes(idx)
-        ? sectionExcluded.filter((i) => i !== idx)
-        : [...sectionExcluded, idx];
-      return {
-        ...prev,
-        [serviceKey]: {
-          ...config,
-          excludedItems: { ...excluded, [section]: newSectionExcluded },
-        },
-      };
-    });
-  };
-
-  const isItemExcluded = (serviceKey, section, idx) => {
-    return (
-      serviceConfigs[serviceKey]?.excludedItems?.[section]?.includes(idx) || false
+  // A template is picked at most once; the chip both adds and removes it.
+  const toggleTemplate = (templateKey) => {
+    setSections((prev) =>
+      prev.some((s) => s.templateKey === templateKey)
+        ? prev.filter((s) => s.templateKey !== templateKey)
+        : [...prev, createSection(templateKey)]
     );
   };
 
-  // ── Merge templates + user config into renderable sections ──
-  const generatePreviewContent = () => {
-    const sections = [];
-
-    selectedServiceTypes.forEach((key) => {
-      const template = SERVICE_TEMPLATES[key];
-      const config = serviceConfigs[key] || {};
-
-      if (key === "social_management") {
-        const platforms = config.platforms || [];
-        if (platforms.length > 0) {
-          const platformNames = platforms
-            .map((p) => {
-              if (p === "Facebook" && platforms.includes("Instagram"))
-                return null;
-              if (p === "Instagram" && platforms.includes("Facebook"))
-                return "פייסבוק ואינסטגרם";
-              if (p === "TikTok") return "טיקטוק";
-              if (p === "LinkedIn") return "לינקדאין";
-              return p;
-            })
-            .filter(Boolean);
-
-          sections.push({
-            type: "social",
-            title: `ניהול עמוד${platformNames.length > 1 ? "י" : ""} ${platformNames.join(" ו")} עסקי`,
-            setupItems: template.setupItems.filter(
-              (_, i) => !isItemExcluded(key, "setup", i)
-            ),
-            managementSections: platforms.map((p) => {
-              const pKey =
-                p === "Facebook" || p === "Instagram"
-                  ? "facebook_instagram"
-                  : p.toLowerCase();
-              const items = (template.managementItems[pKey] || []).filter(
-                (_, i) => !isItemExcluded(key, `mgmt_${pKey}`, i)
-              );
-              return {
-                platform: p,
-                items: items.map((item) =>
-                  item
-                    .replace("{frequency}", config.frequency || "2-3")
-                    .replace("{frequencyUnit}", config.frequencyUnit || "בשבוע")
-                ),
-              };
-            }),
-          });
-        }
-      } else if (key === "campaigns_meta" || key === "campaigns_google" || key === "campaigns_tiktok" || key === "campaigns_chatgpt") {
-        sections.push({
-          type: "campaigns",
-          title:
-            key === "campaigns_meta"
-              ? "קמפיינים ממומנים במטא (פייסבוק ואינסטגרם)"
-              : key === "campaigns_google"
-                ? "קמפיינים ממומנים בגוגל"
-                : key === "campaigns_tiktok"
-                  ? "קמפיינים ממומנים בטיקטוק"
-                  : "קמפיינים ממומנים ב-ChatGPT",
-          setupTitle:
-            key === "campaigns_meta"
-              ? "הקמת הקמפיינים כוללת:"
-              : "בניית מסע הפרסום כוללת:",
-          setupItems: template.setupItems.filter(
-            (_, i) => !isItemExcluded(key, "setup", i)
-          ),
-          managementItems: template.managementItems.filter(
-            (_, i) => !isItemExcluded(key, "management", i)
-          ),
-        });
-      } else if (key === "linkedin_network") {
-        sections.push({
-          type: "linkedin_network",
-          title: "אוטומציה להגדלת רשת הקשרים (Network Growth)",
-          description:
-            "בניית תשתית אוטומטית להגדלת כמות הקשרים (Connections) בפרופיל הלינקדאין. המערכת תבצע שליחת בקשות חברות לקהל יעד מפולח ומדויק, במטרה להרחיב את החשיפה המקצועית.",
-          setupItems: template.setupItems.filter(
-            (_, i) => !isItemExcluded(key, "setup", i)
-          ),
-          softwareCosts: template.softwareCosts,
-        });
-      } else if (key === "custom") {
-        sections.push({
-          type: "custom",
-          title: config.customTitle || "שירות מותאם אישית",
-          description: config.customDescription || "",
-          items: (config.customItems || "").split("\n").filter(Boolean),
-        });
-      } else if (key === "newsletter") {
-        sections.push({
-          type: "newsletter",
-          title: "הפצת ניוזלטר",
-          setupTitle: "הקמה והיערכות ראשונית כוללות:",
-          setupItems: template.setupItems.filter(
-            (_, i) => !isItemExcluded(key, "setup", i)
-          ),
-          managementItems: template.managementItems.filter(
-            (_, i) => !isItemExcluded(key, "management", i)
-          ),
-        });
-      } else {
-        sections.push({
-          type: "generic",
-          title: template.label,
-          items: (template.items || [])
-            .filter((_, i) => !isItemExcluded(key, "items", i))
-            .map((item) =>
-              item
-                .replace("{bannerCount}", config.bannerCount || "10")
-                .replace("{bannerSize}", config.bannerSize || "1080*1080")
-                .replace("{videoCount}", config.videoCount || "4-6")
-                .replace("{videoFrequency}", config.videoFrequency || "1")
-            ),
-        });
-      }
-    });
-
-    return sections;
+  const addBlankSection = () => {
+    setSections((prev) => [...prev, createBlankSection()]);
   };
+
+  const removeSection = (sectionId) => {
+    setSections((prev) => prev.filter((s) => s.id !== sectionId));
+  };
+
+  const moveSection = (sectionId, delta) => {
+    setSections((prev) => {
+      const from = prev.findIndex((s) => s.id === sectionId);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  };
+
+  const updateSection = (sectionId, patch) => {
+    mapSection(sectionId, (s) => ({ ...s, ...patch }));
+  };
+
+  const addGroup = (sectionId) => {
+    mapSection(sectionId, (s) => ({ ...s, groups: [...s.groups, createGroup()] }));
+  };
+
+  const updateGroup = (sectionId, groupId, patch) => {
+    mapGroup(sectionId, groupId, (g) => ({ ...g, ...patch }));
+  };
+
+  const removeGroup = (sectionId, groupId) => {
+    mapSection(sectionId, (s) => ({
+      ...s,
+      groups: s.groups.filter((g) => g.id !== groupId),
+    }));
+  };
+
+  const addItem = (sectionId, groupId) => {
+    mapGroup(sectionId, groupId, (g) => ({ ...g, items: [...g.items, createItem()] }));
+  };
+
+  const updateItem = (sectionId, groupId, itemId, patch) => {
+    mapGroup(sectionId, groupId, (g) => ({
+      ...g,
+      items: g.items.map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
+    }));
+  };
+
+  const removeItem = (sectionId, groupId, itemId) => {
+    mapGroup(sectionId, groupId, (g) => ({
+      ...g,
+      items: g.items.filter((item) => item.id !== itemId),
+    }));
+  };
+
+  // ── The services as the document shows them ──
+  const generatePreviewContent = () => buildDocumentSections(sections);
 
   return (
     <ProposalContext.Provider
@@ -283,18 +232,27 @@ export function ProposalProvider({ children }) {
         step, setStep,
         proposalData, setProposalData,
         proposalId, proposalIdBusy, proposalIdError, ensureProposalId,
-        selectedServiceTypes,
-        serviceConfigs,
+        sections,
         previewMode, setPreviewMode,
         updateField,
         toggleNote,
+        addNote,
+        updateNote,
+        removeNote,
         addPricingRow,
         updatePricingRow,
         removePricingRow,
-        toggleServiceType,
-        updateServiceConfig,
-        toggleServiceItem,
-        isItemExcluded,
+        toggleTemplate,
+        addBlankSection,
+        removeSection,
+        moveSection,
+        updateSection,
+        addGroup,
+        updateGroup,
+        removeGroup,
+        addItem,
+        updateItem,
+        removeItem,
         generatePreviewContent,
       }}
     >

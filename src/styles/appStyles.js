@@ -223,6 +223,33 @@ export const styles = {
     fontSize: "13px",
     lineHeight: "1.6",
   },
+  // Quieter than `input`, for text edited in place inside a list row
+  // (service items, notes) so a long list doesn't read as a wall of boxes.
+  inlineInput: {
+    flex: 1,
+    width: "100%",
+    padding: "2px 8px",
+    borderRadius: "6px",
+    border: "1px solid rgba(99,102,241,0.12)",
+    background: "rgba(15,23,42,0.3)",
+    color: "#e2e8f0",
+    fontSize: "13px",
+    lineHeight: "1.6",
+    fontFamily: "var(--font-stack)",
+    outline: "none",
+    direction: "rtl",
+    boxSizing: "border-box",
+  },
+  // Small text-only button: delete, move up/down, "+ add" links.
+  iconBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#64748b",
+    cursor: "pointer",
+    fontSize: "13px",
+    padding: "2px 6px",
+    flexShrink: 0,
+  },
   btn: (variant) => ({
     padding: variant === "lg" ? "14px 32px" : "10px 20px",
     borderRadius: "10px",

@@ -1,9 +1,11 @@
 import { useProposal } from "../state/useProposal";
 import { styles } from "../styles/appStyles";
 import { PAYMENT_TERMS_OPTIONS } from "../constants/proposalDefaults";
+import AutoTextarea from "./AutoTextarea";
 
 export default function Step4Notes() {
-  const { proposalData, updateField, toggleNote } = useProposal();
+  const { proposalData, updateField, toggleNote, addNote, updateNote, removeNote } =
+    useProposal();
 
   return (
     <div>
@@ -25,45 +27,55 @@ export default function Step4Notes() {
         </div>
 
         <label style={styles.label}>
-          הערות סטנדרטיות (לחץ כדי להפעיל/לכבות)
+          הערות (סמן כדי לכלול בהצעה, לחץ על הטקסט כדי לערוך)
         </label>
-        {proposalData.notes.map((note, idx) => (
-          <div
-            key={idx}
-            style={{
-              ...styles.noteRow,
-              opacity: note.checked ? 1 : 0.4,
-              cursor: "pointer",
-            }}
-            onClick={() => toggleNote(idx)}
-          >
-            <span style={styles.checkbox(note.checked)}>
-              {note.checked ? "✓" : ""}
-            </span>
-            <span
-              style={{
-                textDecoration: note.checked ? "none" : "line-through",
-              }}
+        {proposalData.notes.map((note, idx) => {
+          const textStyle = {
+            textDecoration: note.checked ? "none" : "line-through",
+          };
+          return (
+            <div
+              key={idx}
+              style={{ ...styles.noteRow, opacity: note.checked ? 1 : 0.4 }}
             >
-              {note.text.replace("{paymentTerms}", proposalData.paymentTerms)}
-            </span>
-          </div>
-        ))}
+              <span
+                style={{ ...styles.checkbox(note.checked), marginTop: "3px" }}
+                onClick={() => toggleNote(idx)}
+              >
+                {note.checked ? "✓" : ""}
+              </span>
+              {note.text.includes("{paymentTerms}") ? (
+                // Follows the payment-terms dropdown above, so it is changed
+                // there rather than edited here.
+                <span style={{ ...textStyle, flex: 1, padding: "2px 9px" }}>
+                  {note.text.replace("{paymentTerms}", proposalData.paymentTerms)}
+                </span>
+              ) : (
+                <AutoTextarea
+                  style={{ ...styles.inlineInput, ...textStyle }}
+                  value={note.text}
+                  placeholder="הערה חדשה"
+                  autoFocus={note.text === ""}
+                  onChange={(e) => updateNote(idx, e.target.value)}
+                />
+              )}
+              <button
+                style={styles.iconBtn}
+                title="מחיקת הערה"
+                onClick={() => removeNote(idx)}
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })}
 
-        <div style={{ marginTop: "20px" }}>
-          <label style={styles.label}>הערות נוספות (חופשי)</label>
-          <textarea
-            style={styles.textarea}
-            placeholder="הוסף הערות נוספות כאן, כל שורה = הערה חדשה"
-            value={proposalData.customNotes.join("\n")}
-            onChange={(e) =>
-              updateField(
-                "customNotes",
-                e.target.value.split("\n").filter(Boolean)
-              )
-            }
-          />
-        </div>
+        <button
+          style={{ ...styles.iconBtn, color: "#a5b4fc", marginTop: "6px" }}
+          onClick={addNote}
+        >
+          + הוספת הערה
+        </button>
 
         <div style={{ marginTop: "20px", display: "flex", gap: "20px" }}>
           <div
