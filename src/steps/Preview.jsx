@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useProposal } from "../state/useProposal";
 import { styles, DOC, GLYPH } from "../styles/appStyles";
 import { generateDocx } from "../exportDocx";
@@ -38,49 +38,6 @@ function BulletList({
         </li>
       ))}
     </ul>
-  );
-}
-
-// A social section carries one entry per selected platform. Facebook,
-// Instagram and LinkedIn all describe the same work, so they collapse into a
-// single "ניהול עמוד עסקי כולל" block; TikTok keeps its own, because its items
-// differ. Merging with a Set rather than picking the first match means that if
-// one of them ever stops being identical, its extra lines show up instead of
-// being silently dropped.
-function SocialSection({ section }) {
-  const platforms = section.managementSections || [];
-
-  const general = [
-    ...new Set(
-      platforms.filter((ms) => ms.platform !== "TikTok").flatMap((ms) => ms.items)
-    ),
-  ];
-  const tiktok = platforms.find((ms) => ms.platform === "TikTok");
-
-  return (
-    <>
-      {/* Not tied to any platform — shown even for a TikTok-only proposal. */}
-      <div style={styles.previewLead}>הקמת עמודים או תחילת פעילות:</div>
-      <BulletList items={section.setupItems} gap={16} />
-
-      {general.length > 0 && (
-        <>
-          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
-            ניהול עמוד עסקי כולל:
-          </div>
-          <BulletList items={general} gap={8} />
-        </>
-      )}
-
-      {tiktok?.items?.length > 0 && (
-        <>
-          <div style={{ ...styles.previewLead, marginTop: "12px" }}>
-            ניהול עמוד TikTok עסקי:
-          </div>
-          <BulletList items={tiktok.items} gap={8} />
-        </>
-      )}
-    </>
   );
 }
 
@@ -127,10 +84,9 @@ export default function Preview() {
   };
 
   const sections = generatePreviewContent();
-  const activeNotes = proposalData.notes
-    .filter((n) => n.checked)
+  const allNotes = proposalData.notes
+    .filter((n) => n.checked && n.text.trim())
     .map((n) => n.text.replace("{paymentTerms}", `תנאי תשלום: ${proposalData.paymentTerms}`));
-  const allNotes = [...activeNotes, ...proposalData.customNotes];
 
   const handleDownloadPdf = async () => {
     setPdfBusy(true);
@@ -294,9 +250,13 @@ export default function Preview() {
         )}
 
         {/* Service Sections */}
+        {/* Every section has the same shape (see buildDocumentSections in
+            state/sections.js). Keep in step with the loop in exportDocx.js. */}
         {sections.map((section, sIdx) => (
           <div key={sIdx} style={styles.previewSection}>
-            <div style={styles.previewSectionTitle}>{section.title}</div>
+            {section.title && (
+              <div style={styles.previewSectionTitle}>{section.title}</div>
+            )}
 
             {section.description && (
               <p style={{ fontSize: "13px", marginBottom: "12px" }}>
@@ -304,74 +264,17 @@ export default function Preview() {
               </p>
             )}
 
-            {section.type === "social" && <SocialSection section={section} />}
-
-            {section.type === "campaigns" && (
-              <>
-                <div
-                  style={styles.previewLead}
-                >
-                  {section.setupTitle}
-                </div>
-                <BulletList items={section.setupItems} gap={16} />
-                <div
-                  style={styles.previewLead}
-                >
-                  ניהול הקמפיינים כולל:
-                </div>
-                <BulletList items={section.managementItems} gap={8} />
-              </>
-            )}
-
-            {section.type === "linkedin_network" && (
-              <>
-                <div
-                  style={styles.previewLead}
-                >
-                  השירות כולל:
-                </div>
-                <BulletList items={section.setupItems} gap={16} />
-                {section.softwareCosts && (
-                  <div style={{ marginTop: "12px" }}>
-                    <div
-                      style={styles.previewLead}
-                    >
-                      עלויות תוכנה (תשלום ישיר לספקים – מנוי חודשי):
-                    </div>
-                    <BulletList
-                      items={section.softwareCosts.map(
-                        (sc) => `${sc.name} – ${sc.cost}`
-                      )}
-                      gap={8}
-                    />
-                  </div>
+            {section.groups.map((group, gIdx) => (
+              <Fragment key={gIdx}>
+                {group.heading && (
+                  <div style={styles.previewLead}>{group.heading}</div>
                 )}
-              </>
-            )}
-
-            {(section.type === "generic" || section.type === "custom") &&
-              section.items &&
-              section.items.length > 0 && (
-                <BulletList items={section.items} gap={8} />
-              )}
-
-            {section.type === "newsletter" && (
-              <>
-                <div
-                  style={styles.previewLead}
-                >
-                  {section.setupTitle}
-                </div>
-                <BulletList items={section.setupItems} gap={16} />
-                <div
-                  style={styles.previewLead}
-                >
-                 השירות החודשי כולל:
-                </div>
-                <BulletList items={section.managementItems} gap={8} />
-              </>
-            )}
-
+                <BulletList
+                  items={group.items}
+                  gap={gIdx < section.groups.length - 1 ? 16 : 8}
+                />
+              </Fragment>
+            ))}
           </div>
         ))}
 

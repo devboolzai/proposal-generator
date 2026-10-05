@@ -1,426 +1,285 @@
 import { useProposal } from "../state/useProposal";
 import { styles } from "../styles/appStyles";
 import { SERVICE_TEMPLATES } from "../constants/serviceTemplates";
+import { fieldValues, isGroupShown, resolveText, sectionTitle } from "../state/sections";
+import AutoTextarea from "./AutoTextarea";
+
+const addChip = {
+  ...styles.serviceChip(false),
+  borderStyle: "dashed",
+  color: "#a5b4fc",
+};
+
+const addLink = { ...styles.iconBtn, color: "#a5b4fc", marginTop: "6px" };
 
 export default function Step2Services() {
-  const { selectedServiceTypes, serviceConfigs, toggleServiceType, updateServiceConfig, toggleServiceItem, isItemExcluded } = useProposal();
+  const { sections, toggleTemplate, addBlankSection } = useProposal();
+  const isPicked = (key) => sections.some((s) => s.templateKey === key);
 
   return (
     <div>
       <div style={styles.card}>
         <div style={styles.cardTitle}>🎯 בחירת שירותים</div>
         <p style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>
-          בחר את סוגי השירותים שברצונך לכלול בהצעה. ניתן לבחור מספר שירותים.
+          בחר את סוגי השירותים שברצונך לכלול בהצעה. כל סעיף ניתן לעריכה, וניתן
+          להוסיף סעיפים משלך.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
           {Object.entries(SERVICE_TEMPLATES).map(([key, tpl]) => (
             <div
               key={key}
-              style={styles.serviceChip(selectedServiceTypes.includes(key))}
-              onClick={() => toggleServiceType(key)}
+              style={styles.serviceChip(isPicked(key))}
+              onClick={() => toggleTemplate(key)}
             >
-              <span
-                style={styles.checkbox(selectedServiceTypes.includes(key))}
-              >
-                {selectedServiceTypes.includes(key) ? "✓" : ""}
+              <span style={styles.checkbox(isPicked(key))}>
+                {isPicked(key) ? "✓" : ""}
               </span>
               {tpl.label}
             </div>
           ))}
+          <div style={addChip} onClick={addBlankSection}>
+            + סעיף חדש
+          </div>
         </div>
       </div>
 
-      {selectedServiceTypes.map((key) => {
-        const template = SERVICE_TEMPLATES[key];
-        const config = serviceConfigs[key] || {};
+      {sections.map((section, idx) => (
+        <SectionCard
+          key={section.id}
+          section={section}
+          isFirst={idx === 0}
+          isLast={idx === sections.length - 1}
+        />
+      ))}
 
-        if (key === "social_management") {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>📱 {template.label}</div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>פלטפורמות</label>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {template.platforms.map((p) => (
-                    <div
-                      key={p}
-                      style={styles.serviceChip(
-                        (config.platforms || []).includes(p)
-                      )}
-                      onClick={() => {
-                        const curr = config.platforms || [];
-                        updateServiceConfig(
-                          key,
-                          "platforms",
-                          curr.includes(p)
-                            ? curr.filter((x) => x !== p)
-                            : [...curr, p]
-                        );
-                      }}
-                    >
-                      {p}
-                    </div>
+      {sections.length > 0 && (
+        <button style={styles.btn()} onClick={addBlankSection}>
+          + סעיף חדש
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SectionCard({ section, isFirst, isLast }) {
+  const {
+    removeSection,
+    moveSection,
+    updateSection,
+    addGroup,
+    updateGroup,
+    removeGroup,
+    addItem,
+    updateItem,
+    removeItem,
+  } = useProposal();
+
+  const template = SERVICE_TEMPLATES[section.templateKey];
+  const values = fieldValues(section);
+
+  const setField = (key, value) =>
+    updateSection(section.id, { fields: { ...section.fields, [key]: value } });
+
+  const togglePlatform = (p) =>
+    updateSection(section.id, {
+      platforms: section.platforms.includes(p)
+        ? section.platforms.filter((x) => x !== p)
+        : [...section.platforms, p],
+    });
+
+  const moveBtn = (disabled) => ({
+    ...styles.iconBtn,
+    opacity: disabled ? 0.3 : 1,
+    cursor: disabled ? "default" : "pointer",
+  });
+
+  return (
+    <div style={styles.card}>
+      <div style={{ ...styles.cardTitle, justifyContent: "space-between" }}>
+        <span>
+          {template?.icon || "✨"} {template?.label || "סעיף מותאם אישית"}
+        </span>
+        <span>
+          <button
+            style={moveBtn(isFirst)}
+            disabled={isFirst}
+            title="הזזה למעלה"
+            onClick={() => moveSection(section.id, -1)}
+          >
+            ▲
+          </button>
+          <button
+            style={moveBtn(isLast)}
+            disabled={isLast}
+            title="הזזה למטה"
+            onClick={() => moveSection(section.id, 1)}
+          >
+            ▼
+          </button>
+          <button
+            style={styles.iconBtn}
+            title="הסרת הסעיף"
+            onClick={() => removeSection(section.id)}
+          >
+            ✕
+          </button>
+        </span>
+      </div>
+
+      <div style={styles.fieldGroup}>
+        <label style={styles.label}>
+          כותרת הסעיף
+          {section.title === null && " (מתעדכנת לפי הפלטפורמות)"}
+        </label>
+        <input
+          style={styles.input}
+          value={sectionTitle(section)}
+          placeholder="לדוגמה: בניית דף נחיתה"
+          onChange={(e) => updateSection(section.id, { title: e.target.value })}
+        />
+      </div>
+
+      <div style={styles.fieldGroup}>
+        <label style={styles.label}>תיאור (לא חובה)</label>
+        <AutoTextarea
+          style={styles.input}
+          value={section.description}
+          onChange={(e) =>
+            updateSection(section.id, { description: e.target.value })
+          }
+        />
+      </div>
+
+      {template?.platforms && (
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>פלטפורמות</label>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {template.platforms.map((p) => (
+              <div
+                key={p}
+                style={styles.serviceChip(section.platforms.includes(p))}
+                onClick={() => togglePlatform(p)}
+              >
+                {p}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {template?.fields && (
+        <div style={styles.row}>
+          {template.fields.map((f) => (
+            <div key={f.key}>
+              <label style={styles.label}>{f.label}</label>
+              {f.options ? (
+                <select
+                  style={styles.select}
+                  value={values[f.key]}
+                  onChange={(e) => setField(f.key, e.target.value)}
+                >
+                  {f.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
                   ))}
-                </div>
-              </div>
-              <div style={styles.row}>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>תדירות פוסטים</label>
-                  <input
-                    style={styles.input}
-                    placeholder="2-3"
-                    value={config.frequency || ""}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "frequency", e.target.value)
-                    }
-                  />
-                </div>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>יחידה</label>
-                  <select
-                    style={styles.select}
-                    value={config.frequencyUnit || "בשבוע"}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "frequencyUnit", e.target.value)
-                    }
-                  >
-                    <option value="בשבוע">בשבוע</option>
-                    <option value="בחודש">בחודש</option>
-                  </select>
-                </div>
-              </div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>
-                  פריטי הקמה (לחץ כדי להסיר/להוסיף)
-                </label>
-                {template.setupItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "setup", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "setup", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "setup", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "setup", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "setup", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
-        if (
-          key === "campaigns_meta" ||
-          key === "campaigns_google" ||
-          key === "campaigns_tiktok" ||
-          key === "campaigns_chatgpt"
-        ) {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>🚀 {template.label}</div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>פריטי הקמה</label>
-                {template.setupItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "setup", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "setup", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "setup", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "setup", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "setup", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>פריטי ניהול</label>
-                {template.managementItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "management", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "management", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "management", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "management", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "management", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
-        if (key === "linkedin_network") {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>🔗 {template.label}</div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>פריטי שירות</label>
-                {template.setupItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "setup", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "setup", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "setup", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "setup", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "setup", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
-        if (key === "custom") {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>✨ שירות מותאם אישית</div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>כותרת השירות</label>
+                </select>
+              ) : (
                 <input
                   style={styles.input}
-                  value={config.customTitle || ""}
-                  onChange={(e) =>
-                    updateServiceConfig(key, "customTitle", e.target.value)
-                  }
+                  placeholder={f.default}
+                  value={section.fields[f.key]}
+                  onChange={(e) => setField(f.key, e.target.value)}
                 />
-              </div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>תיאור השירות</label>
-                <textarea
-                  style={styles.textarea}
-                  value={config.customDescription || ""}
-                  onChange={(e) =>
-                    updateServiceConfig(
-                      key,
-                      "customDescription",
-                      e.target.value
-                    )
-                  }
-                />
-              </div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>
-                  פריטים (כל שורה = פריט בולט)
-                </label>
-                <textarea
-                  style={{ ...styles.textarea, minHeight: "120px" }}
-                  placeholder="פריט ראשון&#10;פריט שני&#10;פריט שלישי"
-                  value={config.customItems || ""}
-                  onChange={(e) =>
-                    updateServiceConfig(key, "customItems", e.target.value)
-                  }
-                />
-              </div>
+              )}
             </div>
-          );
-        }
+          ))}
+        </div>
+      )}
 
-        if (key === "design_banners") {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>🎨 {template.label}</div>
-              <div style={styles.row}>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>כמות באנרים</label>
-                  <input
-                    style={styles.input}
-                    placeholder="10"
-                    value={config.bannerCount || ""}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "bannerCount", e.target.value)
-                    }
-                  />
-                </div>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>גודל באנרים</label>
-                  <input
-                    style={styles.input}
-                    placeholder="1080*1080"
-                    value={config.bannerSize || ""}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "bannerSize", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        if (key === "video_production") {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>🎬 {template.label}</div>
-              <div style={styles.row}>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>כמות סרטונים</label>
-                  <input
-                    style={styles.input}
-                    placeholder="4-6"
-                    value={config.videoCount || ""}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "videoCount", e.target.value)
-                    }
-                  />
-                </div>
-                <div style={styles.fieldGroup}>
-                  <label style={styles.label}>תדירות (לחודש)</label>
-                  <input
-                    style={styles.input}
-                    placeholder="1"
-                    value={config.videoFrequency || ""}
-                    onChange={(e) =>
-                      updateServiceConfig(key, "videoFrequency", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        if (
-          key === "newsletter"
-        ) {
-          return (
-            <div key={key} style={styles.card}>
-              <div style={styles.cardTitle}>🚀 {template.label}</div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>הקמה והיערכות ראשונית כוללות</label>
-                {template.setupItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "setup", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "setup", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "setup", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "setup", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "setup", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>השירות החודשי כולל</label>
-                {template.managementItems.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      ...styles.noteRow,
-                      opacity: isItemExcluded(key, "management", i) ? 0.4 : 1,
-                      textDecoration: isItemExcluded(key, "management", i)
-                        ? "line-through"
-                        : "none",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => toggleServiceItem(key, "management", i)}
-                  >
-                    <span
-                      style={styles.checkbox(
-                        !isItemExcluded(key, "management", i)
-                      )}
-                    >
-                      {!isItemExcluded(key, "management", i) ? "✓" : ""}
-                    </span>
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
+      {section.groups.map((group) => {
+        const shown = isGroupShown(section, group);
         return (
-          <div key={key} style={styles.card}>
-            <div style={styles.cardTitle}>📦 {template.label}</div>
-            <div style={styles.fieldGroup}>
-              <label style={styles.label}>פריטי שירות</label>
-              {(template.items || []).map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    ...styles.noteRow,
-                    opacity: isItemExcluded(key, "items", i) ? 0.4 : 1,
-                    textDecoration: isItemExcluded(key, "items", i)
-                      ? "line-through"
-                      : "none",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => toggleServiceItem(key, "items", i)}
-                >
-                  <span
-                    style={styles.checkbox(!isItemExcluded(key, "items", i))}
-                  >
-                    {!isItemExcluded(key, "items", i) ? "✓" : ""}
-                  </span>
-                  <span>{item}</span>
-                </div>
-              ))}
+          <div
+            key={group.id}
+            style={{ ...styles.fieldGroup, opacity: shown ? 1 : 0.5 }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                style={{ ...styles.inlineInput, fontWeight: 700, color: "#94a3b8" }}
+                value={group.heading}
+                placeholder="כותרת משנה (לא חובה)"
+                onChange={(e) =>
+                  updateGroup(section.id, group.id, { heading: e.target.value })
+                }
+              />
+              {group.platforms && (
+                <span style={{ fontSize: "12px", color: "#64748b", flexShrink: 0 }}>
+                  מוצג רק עבור {group.platforms.join(", ")}
+                </span>
+              )}
+              <button
+                style={styles.iconBtn}
+                title="מחיקת תת-הרשימה"
+                onClick={() => removeGroup(section.id, group.id)}
+              >
+                ✕
+              </button>
             </div>
+
+            {group.items.map((item) => (
+              <div
+                key={item.id}
+                style={{ ...styles.noteRow, opacity: item.included ? 1 : 0.4 }}
+              >
+                <span
+                  style={{ ...styles.checkbox(item.included), marginTop: "3px" }}
+                  title={item.included ? "הסתרה מההצעה" : "הצגה בהצעה"}
+                  onClick={() =>
+                    updateItem(section.id, group.id, item.id, {
+                      included: !item.included,
+                    })
+                  }
+                >
+                  {item.included ? "✓" : ""}
+                </span>
+                {/* Shows the line with its quick-fill values in place. Typing
+                    saves it as plain text, so a hand-edited line keeps what
+                    was typed even if the fields above change later. */}
+                <AutoTextarea
+                  style={{
+                    ...styles.inlineInput,
+                    textDecoration: item.included ? "none" : "line-through",
+                  }}
+                  value={resolveText(item.text, values)}
+                  placeholder="פריט חדש"
+                  autoFocus={item.text === ""}
+                  onChange={(e) =>
+                    updateItem(section.id, group.id, item.id, {
+                      text: e.target.value,
+                    })
+                  }
+                />
+                <button
+                  style={styles.iconBtn}
+                  title="מחיקת פריט"
+                  onClick={() => removeItem(section.id, group.id, item.id)}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+
+            <button style={addLink} onClick={() => addItem(section.id, group.id)}>
+              + הוספת פריט
+            </button>
           </div>
         );
       })}
+
+      <button style={styles.btn()} onClick={() => addGroup(section.id)}>
+        + הוספת תת-רשימה
+      </button>
     </div>
   );
 }
